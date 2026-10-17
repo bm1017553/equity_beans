@@ -16,6 +16,7 @@
       "certification",
       "type",
       "inStock",
+      "addedAt",
       "options"
     ],
     "properties": {
@@ -90,6 +91,11 @@
       "inStock": {
         "bsonType": "bool",
         "description": "false hides the coffee from recommendations and blocks Add to Cart."
+      },
+      "addedAt": {
+        "bsonType": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+        "description": "Calendar day the coffee was added to the catalog, YYYY-MM-DD (a day someone picked, so a string like reviews.date; see SCHEMA.md). The Home page's featured coffees show the newest arrivals by this field."
       },
       "options": {
         "bsonType": "array",

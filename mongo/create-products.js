@@ -38,6 +38,7 @@ printjson(
           _id: 0,
           name: { $type: "$name" }, // string
           inStock: { $type: "$inStock" }, // bool
+          addedAt: { $type: "$addedAt" }, // string (YYYY-MM-DD, not a BSON date)
           flavors: { $type: "$flavors" }, // array
           firstOptionPrice: { $type: { $arrayElemAt: ["$options.price", 0] } }, // number
           firstOptionSalePrice: { $type: { $arrayElemAt: ["$options.salePrice", 0] } }, // number (on sale)
@@ -50,6 +51,15 @@ printjson(
 );
 
 // ---------- Sample queries the website will need later ----------
+
+print("\nNewest arrivals (what the Home page's featured coffees use; YYYY-MM-DD sorts as text):");
+printjson(
+  db.products
+    .find({ inStock: true }, { _id: 0, id: 1, name: 1, addedAt: 1 })
+    .sort({ addedAt: -1, id: -1 })
+    .limit(3)
+    .toArray(),
+);
 
 print("\nOut of stock (inStock: false):");
 printjson(db.products.find({ inStock: false }, { _id: 0, id: 1, name: 1 }).toArray());
@@ -71,6 +81,15 @@ print("\nTrying to insert a product with a price stored as a string (should be r
 try {
   const bad = { ...products[0], id: "9999", options: [{ ...products[0].options[0], price: "50.00" }] };
   db.products.insertOne(bad);
+  print("  Unexpected: the document was accepted.");
+} catch (err) {
+  print(`  Rejected as expected: ${err.errInfo ? "Document failed validation" : err.message}`);
+}
+
+print("\nTrying to insert a product with addedAt as a BSON date instead of YYYY-MM-DD (should be rejected):");
+try {
+  const { _id, ...base } = products[0];
+  db.products.insertOne({ ...base, id: "9998", addedAt: new Date() });
   print("  Unexpected: the document was accepted.");
 } catch (err) {
   print(`  Rejected as expected: ${err.errInfo ? "Document failed validation" : err.message}`);

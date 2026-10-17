@@ -63,7 +63,7 @@ other and with the JavaScript.
 
 | Kind                       | Type                | Fields                                                                                                  | Why                                                                                                                                                        |
 | -------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A day a person picked      | string `YYYY-MM-DD` | `reviews.date`                                                                                          | `localDateString()` in `app.js` deliberately avoids `toISOString()`, which is already tomorrow on a US evening. These strings also sort correctly as text. |
+| A day a person picked      | string `YYYY-MM-DD` | `reviews.date`, `products.addedAt`                                                                      | `localDateString()` in `app.js` deliberately avoids `toISOString()`, which is already tomorrow on a US evening. These strings also sort correctly as text. |
 | A moment the code recorded | BSON `date`         | `orders.createdAt`, `quizResults.takenAt`, `users.createdAt`, `users.lastLoginAt`, `messages.createdAt` | Real dates allow `$dateTrunc`, date ranges, and "orders this month" aggregations. `create-orders.js` demonstrates one.                                     |
 
 This matches what the site already does, but it leaves a conversion for later — see
@@ -130,6 +130,7 @@ and the front end use identical field names and types.
 | `certification`       | string                               | string             | Specs list                                                            |
 | `type`                | string                               | string             | Specs list                                                            |
 | `inStock`             | **bool**                             | boolean            | `false` → "Out of stock" tag, Add to Cart disabled, never recommended |
+| `addedAt`             | string `YYYY-MM-DD`                  | string             | Home page's featured coffees show the newest arrivals                 |
 | `options`             | array of objects                     | array              | Purchase option dropdown                                              |
 | `options[].name`      | string (one of 3)                    | string             | Option label                                                          |
 | `options[].price`     | number                               | number             | Regular price (US dollars)                                            |
@@ -142,6 +143,8 @@ and the front end use identical field names and types.
   (Whole Bean & Unroasted for `1007` Mandheling and `1009` Da Lat).
 - **Number vs null:** `1003` (Cerrado Brazilian) Ground & Roasted has `salePrice: 38`; every option not on
   sale has `salePrice: null`.
+- **Date strings:** `addedAt` is `2026-08-01` for the original coffee (`1001`), `2026-10-03` for the
+  catalog expansion (`1002`–`1014`), and `2026-10-17` for the East African coffees (`1015`–`1017`).
 
 ---
 

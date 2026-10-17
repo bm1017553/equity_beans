@@ -76,12 +76,15 @@
 
     const FEATURED_COUNT = 3;
 
-    // Coffees on sale first, then the newest arrivals (highest product ID), skipping anything
-    // that can't be bought right now. Picked from the data, so the list keeps itself current.
+    // Coffees on sale first, then the newest arrivals (latest addedAt), skipping anything that
+    // can't be bought right now. Picked from the data, so the list keeps itself current.
     function pickFeatured(products) {
       const buyable = products.filter(isPurchasable);
       const onSale = buyable.filter(hasSale);
-      const newest = buyable.filter((p) => !hasSale(p)).sort((a, b) => b.id.localeCompare(a.id));
+      // YYYY-MM-DD strings sort correctly as text; product ID breaks ties on the same day.
+      const newest = buyable
+        .filter((p) => !hasSale(p))
+        .sort((a, b) => b.addedAt.localeCompare(a.addedAt) || b.id.localeCompare(a.id));
       return [...onSale, ...newest].slice(0, FEATURED_COUNT);
     }
 

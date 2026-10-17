@@ -20,6 +20,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-08-01",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -59,6 +60,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -97,6 +99,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -136,6 +139,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -175,6 +179,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -214,6 +219,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -252,6 +258,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -290,6 +297,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -329,6 +337,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -368,6 +377,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -407,6 +417,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": false,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -446,6 +457,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -485,6 +497,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -523,6 +536,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-03",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -562,6 +576,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-17",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -601,6 +616,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-17",
       "options": [
         {
           "name": "Ground & Roasted",
@@ -640,6 +656,7 @@ window.EQUITY_FALLBACK_DATA = {
       "certification": "Fair Trade",
       "type": "Single-origin",
       "inStock": true,
+      "addedAt": "2026-10-17",
       "options": [
         {
           "name": "Ground & Roasted",

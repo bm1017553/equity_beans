@@ -86,6 +86,8 @@
     </div>
   </main>
 
+  <footer class="site-footer" id="site-footer"></footer>
+
   <script src="data/fallback.js"></script>
   <script src="app.js"></script>
   <script>
@@ -122,7 +124,8 @@
       const message = validators[id](fieldValue(id));
       const isValid = message === "";
       const input = document.getElementById(id);
-      const showError = touched[id] && !isValid;
+      // Boolean(): toggle(name, undefined) flips the class instead of removing it.
+      const showError = Boolean(touched[id]) && !isValid;
       input.classList.toggle("invalid", showError);
       document.querySelector(`[data-error-for="${id}"]`).textContent = showError ? message : "";
       return isValid;

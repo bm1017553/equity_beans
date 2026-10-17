@@ -1,6 +1,6 @@
 # Equity Beans: MongoDB data model
 
-Database **`equity_beans`**. Five collections, with every field's name and BSON type declared
+Database **`equity_beans`**. Six collections, with every field's name and BSON type declared
 before anything connects to a database.
 
 Nothing in this folder touches the running website. A `$jsonSchema` validator is an ordinary JSON
@@ -15,9 +15,10 @@ site keeps reading its data from `data/*.json` on disk either way. See
 | `users`       | A customer account                | Inline in `create-users.js`                                                              |
 | `orders`      | A completed checkout              | Inline in `create-orders.js`                                                             |
 | `quizResults` | One run through the coffee quiz   | Inline in `create-quizResults.js`                                                        |
+| `messages`    | A message from the contact page   | Inline in `create-messages.js`                                                           |
 
 `products` and `reviews` keep their samples in `data/` because the website fetches those two files
-today. `users`, `orders` and `quizResults` have no disk equivalent — the site keeps them in
+today. `users`, `orders`, `quizResults` and `messages` have no disk equivalent — the site keeps them in
 `localStorage` — so their samples live in the create scripts instead.
 
 ## Files
@@ -37,7 +38,7 @@ today. `users`, `orders` and `quizResults` have no disk equivalent — the site 
    and save.
 3. **Indexes** tab → **Create Index**, using the indexes listed per collection below.
 4. For `products` and `reviews`: **Add Data → Import JSON or CSV file** → choose the matching
-   `data/*.json`. For the other three, run the script in Option B or add documents by hand.
+   `data/*.json`. For the other four, run the script in Option B or add documents by hand.
 
 **Option B: `mongosh`** (run from the project folder)
 
@@ -47,22 +48,23 @@ mongosh "<your connection string>" mongo/create-reviews.js
 mongosh "<your connection string>" mongo/create-users.js
 mongosh "<your connection string>" mongo/create-orders.js
 mongosh "<your connection string>" mongo/create-quizResults.js
+mongosh "<your connection string>" mongo/create-messages.js
 ```
 
 Each script drops and recreates its collection, so re-running one starts fresh. Order doesn't
 matter: the collections reference each other by value, not by database constraint.
 
-## Conventions used across all five collections
+## Conventions used across all six collections
 
 These four decisions were made once and applied everywhere, so the collections agree with each
 other and with the JavaScript.
 
 **1. Dates: calendar days are strings, timestamps are BSON dates.**
 
-| Kind                       | Type                | Fields                                                                            | Why                                                                                                                                                        |
-| -------------------------- | ------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A day a person picked      | string `YYYY-MM-DD` | `reviews.date`                                                                    | `localDateString()` in `app.js` deliberately avoids `toISOString()`, which is already tomorrow on a US evening. These strings also sort correctly as text. |
-| A moment the code recorded | BSON `date`         | `orders.createdAt`, `quizResults.takenAt`, `users.createdAt`, `users.lastLoginAt` | Real dates allow `$dateTrunc`, date ranges, and "orders this month" aggregations. `create-orders.js` demonstrates one.                                     |
+| Kind                       | Type                | Fields                                                                                                  | Why                                                                                                                                                        |
+| -------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A day a person picked      | string `YYYY-MM-DD` | `reviews.date`                                                                                          | `localDateString()` in `app.js` deliberately avoids `toISOString()`, which is already tomorrow on a US evening. These strings also sort correctly as text. |
+| A moment the code recorded | BSON `date`         | `orders.createdAt`, `quizResults.takenAt`, `users.createdAt`, `users.lastLoginAt`, `messages.createdAt` | Real dates allow `$dateTrunc`, date ranges, and "orders this month" aggregations. `create-orders.js` demonstrates one.                                     |
 
 This matches what the site already does, but it leaves a conversion for later — see
 [the API boundary](#the-conversion-the-api-will-have-to-make) below.
@@ -98,8 +100,9 @@ as BSON `int` while `49.5` imports as `double`, and both must be allowed.
 references — nothing stops a review pointing at a deleted coffee — so the API has to check, and
 each validator names the relationship in its `description`.
 
-`users._id` is the exception: `orders.userId`, `quizResults.userId` and `reviews.userId` reference a
-real `objectId`, or hold `null` for guest checkout, logged-out quiz runs and the seed reviews. `null` is used rather than omitting the
+`users._id` is the exception: `orders.userId`, `quizResults.userId`, `reviews.userId` and
+`messages.userId` reference a real `objectId`, or hold `null` for guest checkout, logged-out quiz
+runs, the seed reviews and messages sent while logged out. `null` is used rather than omitting the
 field, so "no account" is explicit and queryable with `{ userId: null }`.
 
 ---
@@ -293,6 +296,33 @@ which is what makes the aggregations in `create-quizResults.js` possible.
 the ranking is the result, and the number of matches can change as the quiz grows. Position 0 is
 the top match, which is how `create-quizResults.js` reports the most common top match.
 
+## `messages`
+
+One document per message sent from the contact page (`contact.html`). Today `saveMessage()` in
+`app.js` keeps them in `localStorage` under `equity_messages`, in this exact shape apart from the two
+conversions at the end of this file.
+
+**Indexes:** `status + createdAt` descending for a support inbox (new messages first);
+`userId + createdAt` descending for one customer's messages.
+
+| Field       | BSON type            | JavaScript type    | Used on the site for                                                 |
+| ----------- | -------------------- | ------------------ | -------------------------------------------------------------------- |
+| `_id`       | objectId             | (added by MongoDB) | Internal document ID                                                 |
+| `userId`    | objectId **or null** | —                  | The account that sent it, or `null` when logged out                  |
+| `name`      | string (2–80)        | string             | Name field; the confirmation says "Thanks, {first name}"             |
+| `email`     | string (email)       | string             | Where to reply; same pattern as the form and checkout                |
+| `topic`     | string (one of 5)    | string             | Topic dropdown: `order`, `coffee`, `account`, `feedback`, `other`    |
+| `orderId`   | string **or null**   | string / `null`    | Only for order questions: the `EB-…` number, else `null`             |
+| `message`   | string (10–1000)     | string             | Message box, with the same `maxlength` and counter as reviews        |
+| `status`    | string (one of 3)    | string             | Starts `new`; staff move it to `answered`, then `closed`             |
+| `createdAt` | **date**             | Date               | Inbox order                                                          |
+
+`orderId` points at `orders.orderId` (the number customers see) rather than an order's `_id`, for
+the same reason products are joined by `id`: it's what the customer actually types or picks.
+Logged-in customers choose from a list of their own orders; guests can type the number. `status`
+isn't shown on the site yet, but a support inbox can't work without it, so it's stored from the
+first message rather than added later.
+
 ---
 
 ## The conversion the API will have to make
@@ -300,12 +330,12 @@ the top match, which is how `create-quizResults.js` reports the most common top 
 The site's objects almost match these schemas, but not exactly. These fields differ, and all would
 fail validation if the browser's JSON were inserted as-is:
 
-| Site writes                                              | Collection expects      | Fix at the API boundary                                    |
-| -------------------------------------------------------- | ----------------------- | ---------------------------------------------------------- |
-| `createdAt: new Date().toISOString()` (orders, users)    | BSON `date`             | `new Date(doc.createdAt)`                                  |
-| `lastLoginAt: new Date().toISOString()` (users)          | BSON `date`             | `new Date(user.lastLoginAt)`                               |
-| `takenAt: new Date().toISOString()` (quizResults)        | BSON `date`             | `new Date(result.takenAt)`                                 |
-| `username: "maria"` or `null` (orders, quiz, reviews)    | `userId`: objectId/null | Look up `users._id` by `username`, then drop `username`    |
+| Site writes                                                     | Collection expects      | Fix at the API boundary                                 |
+| --------------------------------------------------------------- | ----------------------- | ------------------------------------------------------- |
+| `createdAt: new Date().toISOString()` (orders, users, messages) | BSON `date`             | `new Date(doc.createdAt)`                               |
+| `lastLoginAt: new Date().toISOString()` (users)                 | BSON `date`             | `new Date(user.lastLoginAt)`                            |
+| `takenAt: new Date().toISOString()` (quizResults)               | BSON `date`             | `new Date(result.takenAt)`                              |
+| `username: "maria"` or `null` (orders, quiz, reviews, messages) | `userId`: objectId/null | Look up `users._id` by `username`, then drop `username` |
 
 The browser has no account IDs, so it records the username. Logging in also moves that visit's
 guest quiz runs and orders to the account (`claimGuestItems()` in `app.js`); with a database, that
@@ -336,9 +366,9 @@ single `loadJson()` call. Once a Node/Express API serves these collections, poin
 `loadJson("data/products.json")` at `/api/products` and the pages don't need other changes. The
 same seam applies to `data/reviews.json` → `/api/reviews`.
 
-`users`, `orders` and `quizResults` have no disk file to swap out — they are written through
-`createAccount()` / `logIn()`, `saveOrder()` and `saveQuizResult()`, so those functions are where
-the API calls will go, with the conversions in the table above. Password hashing then moves to the
+`users`, `orders`, `quizResults` and `messages` have no disk file to swap out — they are written
+through `createAccount()` / `logIn()`, `saveOrder()`, `saveQuizResult()` and `saveMessage()`, so those
+functions are where the API calls will go, with the conversions in the table above. Password hashing then moves to the
 server too: `createAccount()` and `logIn()` would send the password over HTTPS and get back only a
 session, never `passwordHash`.
 

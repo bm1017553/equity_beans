@@ -16,6 +16,7 @@
     <section class="shop-hero">
       <h1>Shop Fair Trade Coffee</h1>
       <p>Single-origin beans from six growing regions, bought directly from the cooperatives who grow them.</p>
+      <a href="about.html" class="hero-link">Why Fair Trade? →</a>
     </section>
 
     <div class="page-with-sidebar">
@@ -71,13 +72,14 @@
     </div>
   </main>
 
+  <footer class="site-footer" id="site-footer"></footer>
+
   <script src="data/fallback.js"></script>
   <script src="app.js"></script>
   <script>
     renderNav("index.html");
 
     const COLUMNS_KEY = "equity_shop_columns";
-    const REGION_ORDER = ["South American", "Central American", "Asian", "South African", "Central African", "East African"];
 
     const grid = document.getElementById("product-grid");
     const chipsEl = document.getElementById("filter-chips");

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | About</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="index.html">Shop</a></li>
+        <li aria-current="page">About</li>
+      </ol>
+    </nav>
+
+    <section class="page-hero about-hero">
+      <h1>Coffee that pays its growers fairly</h1>
+      <p>Equity means fairness. Every coffee we sell is single-origin and Fair Trade certified, bought from the cooperatives of small farmers who grow it.</p>
+    </section>
+
+    <section class="about-section" aria-labelledby="fair-title">
+      <h2 id="fair-title">What Fair Trade means</h2>
+      <div class="about-cards">
+        <article class="card about-card">
+          <h3>A fair minimum price</h3>
+          <p>Cooperatives are paid at least a set minimum for their coffee, which protects farmers when market prices drop.</p>
+        </article>
+        <article class="card about-card">
+          <h3>A premium for communities</h3>
+          <p>On top of that price, cooperatives earn a Fair Trade premium and vote on how to spend it, on things like schools, clean water, or better farm equipment.</p>
+        </article>
+        <article class="card about-card">
+          <h3>Standards for people and land</h3>
+          <p>Certified farms follow rules for fair working conditions, no forced or child labor, and protecting the land they farm.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="about-section" aria-labelledby="regions-title">
+      <h2 id="regions-title">Where our coffee comes from</h2>
+      <p class="muted about-lead">Pick a region to see its coffees in the shop.</p>
+      <div class="region-grid" id="region-grid"></div>
+    </section>
+
+    <section class="about-section about-split" aria-labelledby="price-title">
+      <div>
+        <h2 id="price-title">Why it costs a bit more</h2>
+        <p>Our coffee costs more than most supermarket coffee. That difference is the fair price and premium going to the people who grow it, and beans you can trace back to one country instead of a blend from everywhere.</p>
+        <p>Not sure where to start? The coffee quiz matches you with one in a minute.</p>
+      </div>
+      <div class="about-actions">
+        <a href="index.html" class="btn btn-link">Shop the coffees</a>
+        <a href="quiz.html" class="btn btn-secondary btn-link">Take the coffee quiz</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    renderNav("about.html");
+
+    // One card per growing region, in the shop's Origin filter order, built from the product data
+    // so new coffees and countries show up here automatically.
+    async function renderRegions() {
+      const products = await getProducts();
+      document.getElementById("region-grid").innerHTML = REGION_ORDER.map((region) => {
+        const coffees = products.filter((p) => p.region === region);
+        const countries = [...new Set(coffees.map((p) => p.country))].sort();
+        return `
+        <a class="card region-card" href="index.html?region=${encodeURIComponent(region)}">
+          <span class="tag ${regionClass(region)}">${escapeHtml(region)}</span>
+          <strong>${escapeHtml(countries.join(", "))}</strong>
+          <span class="muted">${coffees.length} coffee${coffees.length === 1 ? "" : "s"} →</span>
+        </a>`;
+      }).join("");
+    }
+
+    renderRegions().catch((err) => {
+      document.getElementById("region-grid").innerHTML =
+        `<p class="error-text">Could not load the coffees. Make sure the site is running on a local server.</p>`;
+      console.error(err);
+    });
+  </script>
+</body>
+</html>

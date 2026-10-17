@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | FAQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="faq-main">
+    <div class="page-head">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="index.html">Shop</a></li>
+          <li aria-current="page">FAQ</li>
+        </ol>
+      </nav>
+      <h1>Frequently asked questions</h1>
+      <p class="muted faq-lead">Can’t find your answer? <a href="contact.html">Send us a message</a>.</p>
+    </div>
+
+    <section class="faq-group" aria-labelledby="faq-orders">
+      <h2 id="faq-orders">Ordering &amp; shipping</h2>
+
+      <details class="card faq-item">
+        <summary>How much is shipping?</summary>
+        <p>Shipping is <span data-fill="shipping-fee"></span> per order, and free on orders of <span data-fill="free-shipping-min"></span> or more. Your cart shows how close you are to free shipping.</p>
+      </details>
+
+      <details class="card faq-item">
+        <summary>Is there a limit on how many bags I can order?</summary>
+        <p>You can order up to <span data-fill="max-qty"></span> of each coffee and purchase option per order. If you need more, <a href="contact.html">send us a message</a>.</p>
+      </details>
+
+      <details class="card faq-item">
+        <summary>Do I need an account to order?</summary>
+        <p>No, you can check out as a guest. If you log in or create an account during the same visit, we’ll save that order to your account so you can find it again.</p>
+      </details>
+
+      <details class="card faq-item">
+        <summary>How do I pay?</summary>
+        <p>Card payments through Square are coming soon. For now the site is in demo mode: you can place an order and get an order number, but no payment is taken.</p>
+      </details>
+    </section>
+
+    <section class="faq-group" aria-labelledby="faq-coffee">
+      <h2 id="faq-coffee">Our coffee</h2>
+
+      <details class="card faq-item">
+        <summary>What’s the difference between the purchase options?</summary>
+        <p><strong>Ground &amp; Roasted</strong> is ready to brew. <strong>Whole Bean &amp; Roasted</strong> stays fresh longer if you grind it yourself. <strong>Whole Bean &amp; Unroasted</strong> is green coffee for people who roast at home, and it costs less.</p>
+      </details>
+
+      <details class="card faq-item">
+        <summary>How big is a bag?</summary>
+        <p>Every price on the site is for a 1 lb bag.</p>
+      </details>
+
+      <details class="card faq-item">
+        <summary>What do light, medium and dark roast mean?</summary>
+        <p>Light roasts are brighter and more fruity or floral. Dark roasts are bolder and smoother, with less acidity. Medium sits in between. Every coffee shows its roast as a tag, and the shop can filter by it.</p>
+      </details>
+
+      <details class="card faq-item">
+        <summary>Why does a coffee say “sold out” or “out of stock”?</summary>
+        <p>“Sold out” next to a purchase option means that version is gone, but the others can still be ordered. “Out of stock” means the whole coffee is unavailable for now.</p>
+      </details>
+
+      <details class="card faq-item">
+        <summary>Is all of your coffee Fair Trade?</summary>
+        <p>Yes, every coffee we sell is Fair Trade certified and single-origin. <a href="about.html">Read what Fair Trade means for the farmers</a>.</p>
+      </details>
+    </section>
+
+    <section class="faq-group" aria-labelledby="faq-account">
+      <h2 id="faq-account">Accounts &amp; the coffee quiz</h2>
+
+      <details class="card faq-item">
+        <summary>What do I get with an account?</summary>
+        <p>You can review coffees, keep your coffee quiz matches, and see every order you’ve placed on <a href="account.html">your account page</a>.</p>
+      </details>
+
+      <details class="card faq-item">
+        <summary>How does the coffee quiz pick my match?</summary>
+        <p>It asks six quick questions. The flavors you pick count the most, then the region and time of day you choose, and how you drink your coffee. Flavors you’d rather avoid push a coffee down the list. Your brewing method picks the right grind. <a href="quiz.html">Take the quiz</a>.</p>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    renderNav("faq.html");
+
+    // Fill in numbers from the same settings the cart and product pages use, so the answers
+    // always match the site.
+    const FILLS = {
+      "shipping-fee": formatMoney(SHIPPING_FEE),
+      "free-shipping-min": formatMoney(FREE_SHIPPING_MIN),
+      "max-qty": String(MAX_QTY),
+    };
+    document.querySelectorAll("[data-fill]").forEach((el) => {
+      el.textContent = FILLS[el.dataset.fill];
+    });
+  </script>
+</body>
+</html>

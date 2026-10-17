@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Contact</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide">
+    <div class="page-head">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="index.html">Shop</a></li>
+          <li aria-current="page">Contact</li>
+        </ol>
+      </nav>
+      <h1>Contact us</h1>
+    </div>
+
+    <div class="card confirmation" id="message-sent" hidden>
+      <p class="confirmation-kicker">Message sent</p>
+      <h2>Thanks, <span id="sent-name"></span>!</h2>
+      <p>We’ll reply to <strong id="sent-email"></strong>.</p>
+      <p class="muted">Demo mode: your message is saved in this browser for now, until the site has a server.</p>
+      <a href="index.html" class="btn btn-link">Back to the shop</a>
+    </div>
+
+    <div class="flow-layout" id="contact-layout">
+      <form class="card checkout-form contact-form" id="contact-form" novalidate>
+        <h2>Send us a message</h2>
+        <div class="field-row">
+          <div class="field">
+            <label for="contact-name">Name</label>
+            <input type="text" id="contact-name" autocomplete="name" />
+            <span class="error-text" data-error-for="contact-name"></span>
+          </div>
+          <div class="field">
+            <label for="contact-email">Email</label>
+            <input type="email" id="contact-email" autocomplete="email" />
+            <span class="error-text" data-error-for="contact-email"></span>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="contact-topic">Topic</label>
+            <select id="contact-topic">
+              <option value="">Choose a topic</option>
+              <option value="order">Order question</option>
+              <option value="coffee">Coffee question</option>
+              <option value="account">Account help</option>
+              <option value="feedback">Feedback</option>
+              <option value="other">Other</option>
+            </select>
+            <span class="error-text" data-error-for="contact-topic"></span>
+          </div>
+          <!-- Only for order questions: a typed order number, or a list of the account's orders -->
+          <div class="field" id="order-field" hidden>
+            <label for="contact-order">Order number <span class="muted">(optional)</span></label>
+            <input type="text" id="contact-order" placeholder="EB-…" />
+            <span class="error-text" data-error-for="contact-order"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="contact-message">Message</label>
+          <textarea id="contact-message" rows="6" maxlength="1000"></textarea>
+          <span class="char-count" id="contact-count"></span>
+          <span class="error-text" data-error-for="contact-message"></span>
+        </div>
+        <button type="submit" class="btn" id="send-btn" disabled>Send message</button>
+        <p class="action-hint" id="send-hint">Fill in each field to send your message.</p>
+      </form>
+
+      <aside class="card contact-side" aria-labelledby="before-title">
+        <h2 id="before-title">Before you write</h2>
+        <p>Shipping costs, purchase options and how accounts work are covered in the <a href="faq.html">FAQ</a>.</p>
+        <p>Asking about an order? Your order numbers are on <a href="account.html">your account page</a>, or on the confirmation screen after checkout.</p>
+        <p>Want to know where our coffee comes from? <a href="about.html">Read about Fair Trade</a>.</p>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    renderNav("contact.html");
+
+    const form = document.getElementById("contact-form");
+    const sendBtn = document.getElementById("send-btn");
+    const topicSelect = document.getElementById("contact-topic");
+    const orderField = document.getElementById("order-field");
+    const messageInput = document.getElementById("contact-message");
+    const username = currentUsername();
+
+    // Same email rule as checkout and mongo/messages.validator.json.
+    const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const ORDER_PATTERN = /^EB-[A-Z0-9]+$/;
+
+    const validators = {
+      "contact-name": (v) => (v.length >= 2 ? "" : "Please enter your name."),
+      "contact-email": (v) => (EMAIL_PATTERN.test(v) ? "" : "Please enter a valid email address."),
+      "contact-topic": (v) => (v ? "" : "Please choose a topic."),
+      // Optional, and only checked when it's showing.
+      "contact-order": (v) => (orderField.hidden || !v || ORDER_PATTERN.test(v) ? "" : "Order numbers look like EB-M2X4K9A1."),
+      "contact-message": (v) => (v.length >= 10 ? "" : "Please write a little more (at least 10 characters)."),
+    };
+
+    // ---------- Validation (the same pattern as checkout) ----------
+
+    // Only show a field's error after the user has left it once.
+    const touched = {};
+
+    function fieldValue(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    function validateField(id) {
+      const message = validators[id](fieldValue(id));
+      // Boolean(): toggle(name, undefined) flips the class instead of removing it.
+      const showError = Boolean(touched[id]) && message !== "";
+      document.getElementById(id).classList.toggle("invalid", showError);
+      document.querySelector(`[data-error-for="${id}"]`).textContent = showError ? message : "";
+      return message === "";
+    }
+
+    function updateFormState() {
+      const valid = Object.keys(validators).map(validateField).every(Boolean);
+      sendBtn.disabled = !valid;
+      document.getElementById("send-hint").hidden = valid;
+      return valid;
+    }
+
+    function watchField(id) {
+      const input = document.getElementById(id);
+      input.addEventListener("input", updateFormState);
+      input.addEventListener("change", updateFormState);
+      input.addEventListener("blur", () => {
+        touched[id] = true;
+        updateFormState();
+      });
+    }
+
+    Object.keys(validators).forEach(watchField);
+
+    // ---------- Order number: only for order questions ----------
+
+    topicSelect.addEventListener("change", () => {
+      orderField.hidden = topicSelect.value !== "order";
+      updateFormState();
+    });
+
+    // A logged-in customer with orders picks one from a list instead of typing it.
+    const orders = username ? getOrders(username) : [];
+    if (orders.length) {
+      const typed = document.getElementById("contact-order");
+      const select = document.createElement("select");
+      select.id = "contact-order";
+      select.innerHTML =
+        `<option value="">Not about a specific order</option>` +
+        orders
+          .map((o) => `<option value="${escapeHtml(o.orderId)}">${escapeHtml(o.orderId)} · ${formatMoney(o.totals.total)}</option>`)
+          .join("");
+      typed.replaceWith(select);
+      watchField("contact-order");
+    } else {
+      // Typed order numbers are upper case, like the ones on the confirmation screen.
+      document.getElementById("contact-order").addEventListener("input", (e) => {
+        e.target.value = e.target.value.toUpperCase();
+      });
+    }
+
+    // Logged in: start from the name and email on their latest order.
+    if (orders.length) {
+      document.getElementById("contact-name").value = orders[0].customer.name;
+      document.getElementById("contact-email").value = orders[0].customer.email;
+    }
+
+    // ---------- Character counter (same limit as the database) ----------
+
+    function updateCount() {
+      document.getElementById("contact-count").textContent = `${messageInput.value.length} / ${messageInput.maxLength} characters`;
+    }
+    messageInput.addEventListener("input", updateCount);
+    updateCount();
+    updateFormState();
+
+    // ---------- Send ----------
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      Object.keys(validators).forEach((id) => (touched[id] = true));
+      if (!updateFormState()) return;
+
+      const topic = fieldValue("contact-topic");
+      // Shaped for the messages collection (see mongo/SCHEMA.md).
+      const message = {
+        username, // the API maps this to userId; null when logged out
+        name: fieldValue("contact-name"),
+        email: fieldValue("contact-email"),
+        topic,
+        orderId: topic === "order" && fieldValue("contact-order") ? fieldValue("contact-order") : null,
+        message: fieldValue("contact-message"),
+        status: "new",
+        createdAt: new Date().toISOString(),
+      };
+      saveMessage(message);
+
+      document.getElementById("sent-name").textContent = message.name.split(" ")[0];
+      document.getElementById("sent-email").textContent = message.email;
+      document.getElementById("contact-layout").hidden = true;
+      document.getElementById("message-sent").hidden = false;
+      window.scrollTo(0, 0);
+    });
+  </script>
+</body>
+</html>

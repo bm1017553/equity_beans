@@ -1,0 +1,51 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "title": "Equity Beans contact message",
+    "required": ["userId", "name", "email", "topic", "orderId", "message", "status", "createdAt"],
+    "additionalProperties": false,
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "userId": {
+        "bsonType": ["objectId", "null"],
+        "description": "Reference to users._id when the customer was logged in, or null. null rather than missing, like orders, quizResults and reviews."
+      },
+      "name": {
+        "bsonType": "string",
+        "minLength": 2,
+        "maxLength": 80,
+        "description": "Name as typed on contact.html (at least 2 characters, the form's rule)."
+      },
+      "email": {
+        "bsonType": "string",
+        "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+        "description": "Where to reply. Same pattern as EMAIL_PATTERN on contact.html and the checkout form."
+      },
+      "topic": {
+        "enum": ["order", "coffee", "account", "feedback", "other"],
+        "description": "The Topic dropdown's values (shown as Order question, Coffee question, Account help, Feedback, Other)."
+      },
+      "orderId": {
+        "bsonType": ["string", "null"],
+        "pattern": "^EB-[A-Z0-9]+$",
+        "description": "Only for order questions: references orders.orderId (the EB-... number customers see), or null. The pattern applies only when it's a string."
+      },
+      "message": {
+        "bsonType": "string",
+        "minLength": 10,
+        "maxLength": 1000,
+        "description": "Message body. 10 to 1000 characters, the same limits as the form (maxlength=\"1000\" and its counter)."
+      },
+      "status": {
+        "enum": ["new", "answered", "closed"],
+        "description": "Every message starts as new; staff move it to answered, then closed."
+      },
+      "createdAt": {
+        "bsonType": "date",
+        "description": "When the message was sent. A real BSON date; the browser writes an ISO string, converted at the API (see SCHEMA.md)."
+      }
+    }
+  }
+}

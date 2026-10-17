@@ -174,6 +174,8 @@ async function loadJson(path) {
 }
 
 const ROAST_ORDER = ["Light", "Medium", "Dark"];
+// The shop's Origin filter order; the About page lists regions the same way.
+const REGION_ORDER = ["South American", "Central American", "Asian", "South African", "Central African", "East African"];
 
 async function getProducts() {
   return loadJson("data/products.json");
@@ -486,6 +488,17 @@ function saveOrder(order) {
   rememberGuestItem("order", order.orderId);
 }
 
+// ---------- Contact messages ----------
+
+// Messages from the contact page, shaped like the messages collection (see mongo/SCHEMA.md).
+const MESSAGES_KEY = "equity_messages";
+
+function saveMessage(message) {
+  const messages = readJson(MESSAGES_KEY, []);
+  messages.push(message);
+  localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+}
+
 // An account's orders, newest first. Orders from before accounts have no username: guest orders.
 function getOrders(username) {
   return readJson(ORDERS_KEY, [])
@@ -683,6 +696,8 @@ function renderNav(activePage) {
       </nav>
     </div>`;
 
+  renderFooter(activePage);
+
   const logoutBtn = document.getElementById("logout-btn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
@@ -694,6 +709,39 @@ function renderNav(activePage) {
       }
     });
   }
+}
+
+// Footer on every page (called by renderNav, so it also updates on log out). The header keeps
+// to the main shopping links; the footer adds About, FAQ and Contact.
+function renderFooter(activePage) {
+  const mount = document.getElementById("site-footer");
+  if (!mount) return;
+
+  const account = currentUsername()
+    ? { href: "account.html", label: "Your account" }
+    : { href: "login.html", label: "Log in" };
+  const links = [
+    { href: "index.html", label: "Shop" },
+    { href: "quiz.html", label: "Coffee quiz" },
+    { href: "reviews.html", label: "Reviews" },
+    { href: "about.html", label: "About" },
+    { href: "faq.html", label: "FAQ" },
+    { href: "contact.html", label: "Contact" },
+    account,
+  ];
+
+  mount.innerHTML = `
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="brand">Equity Beans</a>
+        <p>Fair Trade, single-origin coffee from six growing regions.</p>
+      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        ${links
+          .map((l) => `<a href="${l.href}" class="${activePage === l.href ? "active" : ""}">${l.label}</a>`)
+          .join("")}
+      </nav>
+    </div>`;
 }
 
 function escapeHtml(str) {

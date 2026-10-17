@@ -16,7 +16,7 @@
     <div class="page-head">
       <nav class="breadcrumb" aria-label="Breadcrumb">
         <ol id="crumbs">
-          <li><a href="index.html">Shop</a></li>
+          <li><a href="shop.html">Shop</a></li>
           <li aria-current="page">Reviews</li>
         </ol>
       </nav>
@@ -205,7 +205,7 @@
 
     function renderHeading() {
       const product = productsById[state.product];
-      const crumbs = [`<li><a href="index.html">Shop</a></li>`];
+      const crumbs = [`<li><a href="shop.html">Shop</a></li>`];
       if (product) {
         crumbs.push(`<li><a href="reviews.html">Reviews</a></li>`);
         crumbs.push(`<li aria-current="page"><a href="product.html?id=${encodeURIComponent(product.id)}">${escapeHtml(product.name)}</a></li>`);

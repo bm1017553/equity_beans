@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Shop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide">
+    <section class="shop-hero">
+      <h1>Shop Fair Trade Coffee</h1>
+      <p>Single-origin beans from six growing regions, bought directly from the cooperatives who grow them.</p>
+      <a href="about.html" class="hero-link">Why Fair Trade? →</a>
+    </section>
+
+    <div class="page-with-sidebar">
+      <aside class="card rec-sidebar" aria-labelledby="side-title">
+        <h2 id="side-title">Recommended for you</h2>
+        <p class="muted" id="side-basis"></p>
+        <div class="rec-list" id="side-list"></div>
+        <a href="quiz.html" class="quiz-callout quiz-callout-compact" id="side-quiz" hidden>
+          <span class="quiz-callout-question">Not sure where to start?</span>
+          <span class="quiz-callout-link">Take the coffee quiz →</span>
+        </a>
+      </aside>
+      <div>
+        <div class="shop-bar">
+          <div class="shop-status">
+            <span id="product-count"></span>
+            <div class="filter-chips" id="filter-chips"></div>
+          </div>
+
+          <div class="icon-toolbar" role="toolbar" aria-label="Filter and sort coffees">
+            <div class="icon-control">
+              <button type="button" class="icon-btn" data-menu="region" data-tip="Origin" aria-label="Filter by origin" aria-haspopup="true" aria-expanded="false" aria-controls="menu-region">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.8 2.6 4 5.6 4 9s-1.2 6.4-4 9M12 3c-2.8 2.6-4 5.6-4 9s1.2 6.4 4 9" /></svg>
+              </button>
+              <div class="icon-menu" id="menu-region" role="menu" aria-label="Origin" hidden></div>
+            </div>
+            <div class="icon-control">
+              <button type="button" class="icon-btn" data-menu="roast" data-tip="Roast" aria-label="Filter by roast" aria-haspopup="true" aria-expanded="false" aria-controls="menu-roast">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>
+              </button>
+              <div class="icon-menu" id="menu-roast" role="menu" aria-label="Roast" hidden></div>
+            </div>
+            <div class="icon-control">
+              <button type="button" class="icon-btn" data-menu="sort" data-tip="Sort" aria-label="Sort coffees" aria-haspopup="true" aria-expanded="false" aria-controls="menu-sort">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 4v16M3.5 7.5 7 4l3.5 3.5M17 20V4M13.5 16.5 17 20l3.5-3.5" /></svg>
+              </button>
+              <div class="icon-menu" id="menu-sort" role="menu" aria-label="Sort by" hidden></div>
+            </div>
+
+            <span class="toolbar-divider column-toggle" aria-hidden="true"></span>
+
+            <button type="button" class="icon-btn col-btn column-toggle" data-cols="2" data-tip="2 columns" aria-label="Show 2 columns" aria-pressed="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="7.5" height="16" rx="1.5" /><rect x="13" y="4" width="7.5" height="16" rx="1.5" /></svg>
+            </button>
+            <button type="button" class="icon-btn col-btn column-toggle" data-cols="3" data-tip="3 columns" aria-label="Show 3 columns" aria-pressed="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2.5" y="4" width="5" height="16" rx="1.2" /><rect x="9.5" y="4" width="5" height="16" rx="1.2" /><rect x="16.5" y="4" width="5" height="16" rx="1.2" /></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="product-grid" id="product-grid"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    renderNav("shop.html");
+
+    const COLUMNS_KEY = "equity_shop_columns";
+
+    const grid = document.getElementById("product-grid");
+    const chipsEl = document.getElementById("filter-chips");
+    const colButtons = document.querySelectorAll(".col-btn");
+
+    let products = [];
+    let ratings = {};
+
+    // Current filter + sort choices; "all" means no filter.
+    const DEFAULTS = { region: "all", roast: "all", sort: "origin" };
+    const state = { ...DEFAULTS };
+
+    // Links like shop.html?region=Asian (from a product page's breadcrumb) open pre-filtered.
+    const params = new URLSearchParams(window.location.search);
+    if (REGION_ORDER.includes(params.get("region"))) state.region = params.get("region");
+    if (ROAST_ORDER.includes(params.get("roast"))) state.roast = params.get("roast");
+
+    const MENUS = {
+      region: [{ value: "all", label: "All origins" }, ...REGION_ORDER.map((r) => ({ value: r, label: r }))],
+      roast: [{ value: "all", label: "All roasts" }, ...ROAST_ORDER.map((r) => ({ value: r, label: `${r} roast` }))],
+      sort: [
+        { value: "origin", label: "Origin" },
+        { value: "roast-light", label: "Roast: light to dark" },
+        { value: "roast-dark", label: "Roast: dark to light" },
+        { value: "price-low", label: "Price: low to high" },
+        { value: "price-high", label: "Price: high to low" },
+        { value: "name", label: "Name (A–Z)" },
+      ],
+    };
+
+    const sorters = {
+      origin: (a, b) => REGION_ORDER.indexOf(a.region) - REGION_ORDER.indexOf(b.region) || a.country.localeCompare(b.country),
+      "roast-light": (a, b) => ROAST_ORDER.indexOf(a.roast) - ROAST_ORDER.indexOf(b.roast) || a.name.localeCompare(b.name),
+      "roast-dark": (a, b) => ROAST_ORDER.indexOf(b.roast) - ROAST_ORDER.indexOf(a.roast) || a.name.localeCompare(b.name),
+      "price-low": (a, b) => lowestPrice(a) - lowestPrice(b),
+      "price-high": (a, b) => lowestPrice(b) - lowestPrice(a),
+      name: (a, b) => a.name.localeCompare(b.name),
+    };
+
+    // ---------- Icon menus + chips (shared helpers in app.js) ----------
+
+    const toolbar = setupIconMenus({
+      root: document.querySelector(".icon-toolbar"),
+      menus: MENUS,
+      state,
+      defaults: DEFAULTS,
+      onChange: () => renderGrid(),
+    });
+
+    setupChipClearing(chipsEl, { state, defaults: DEFAULTS, onChange: () => renderGrid() });
+
+    // ---------- Grid ----------
+
+    function renderGrid() {
+      const shown = products
+        .filter((p) => state.region === "all" || p.region === state.region)
+        .filter((p) => state.roast === "all" || p.roast === state.roast)
+        .sort(sorters[state.sort]);
+
+      document.getElementById("product-count").textContent = `Showing ${shown.length} of ${products.length} coffees`;
+      renderFilterChips(chipsEl, { menus: MENUS, state, defaults: DEFAULTS, filters: ["region", "roast"], sortKey: "sort" });
+      toolbar.refreshIndicators();
+
+      if (shown.length === 0) {
+        grid.innerHTML = `<div class="card empty-state">No coffees match these filters.</div>`;
+        return;
+      }
+
+      grid.innerHTML = shown.map((p) => renderProductCard(p, ratings[p.id])).join("");
+    }
+
+    function setColumns(cols) {
+      grid.classList.toggle("cols-3", cols === 3);
+      colButtons.forEach((btn) => btn.setAttribute("aria-pressed", String(Number(btn.dataset.cols) === cols)));
+      try {
+        localStorage.setItem(COLUMNS_KEY, String(cols));
+      } catch {}
+    }
+
+    colButtons.forEach((btn) => btn.addEventListener("click", () => setColumns(Number(btn.dataset.cols))));
+
+    let savedCols = 3;
+    try {
+      savedCols = Number(localStorage.getItem(COLUMNS_KEY)) || 3;
+    } catch {}
+    setColumns(savedCols === 2 ? 2 : 3);
+
+    async function init() {
+      try {
+        const [allProducts, reviews] = await Promise.all([getProducts(), getReviews()]);
+        products = allProducts;
+        ratings = ratingsByProduct(reviews);
+        renderGrid();
+        renderSidebar();
+      } catch (err) {
+        grid.innerHTML = `<p class="error-text">Could not load products. Make sure the site is running on a local server.</p>`;
+        console.error(err);
+      }
+    }
+
+    // Left sidebar: match the cart, else the quiz results, else the last coffee viewed,
+    // else the best-rated coffees.
+    function renderSidebar() {
+      const title = document.getElementById("side-title");
+      const basis = document.getElementById("side-basis");
+      const quiz = getQuizResult();
+      const quizMatches = quiz
+        ? quiz.productIds.map((id) => products.find((p) => p.id === id)).filter(Boolean).map((p) => ({ product: p, shared: [] }))
+        : [];
+      let matches = recommendForCart(products);
+
+      if (getCart().length && matches.length) {
+        title.textContent = "Based on your cart";
+        basis.textContent = "Coffees that share flavors with what you’ve picked.";
+      } else if (quizMatches.length) {
+        matches = quizMatches;
+        title.textContent = "Your quiz matches";
+        basis.innerHTML = `From your coffee quiz. <a href="quiz.html">Retake it</a>`;
+      } else {
+        const lastViewed = products.find((p) => p.id === getLastViewed());
+        if (lastViewed) {
+          matches = recommendFor(lastViewed, products);
+          title.textContent = "Because you viewed";
+          basis.textContent = lastViewed.name;
+        } else {
+          matches = [...products]
+            .sort((a, b) => (ratings[b.id]?.avg || 0) - (ratings[a.id]?.avg || 0) || (ratings[b.id]?.count || 0) - (ratings[a.id]?.count || 0))
+            .slice(0, 3)
+            .map((p) => ({ product: p, shared: [] }));
+          title.textContent = "Customer favorites";
+          basis.textContent = "Our best-rated coffees.";
+        }
+      }
+
+      document.getElementById("side-list").innerHTML = renderRecItems(matches);
+      // Until someone has taken the quiz, invite them to.
+      document.getElementById("side-quiz").hidden = Boolean(quiz);
+    }
+
+    // Logging out swaps an account's quiz matches for the guest's.
+    window.onSessionChanged = renderSidebar;
+
+    init();
+  </script>
+</body>
+</html>

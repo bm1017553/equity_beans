@@ -15,7 +15,7 @@
   <main class="wide">
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <ol>
-        <li><a href="index.html">Shop</a></li>
+        <li><a href="shop.html">Shop</a></li>
         <li aria-current="page">About</li>
       </ol>
     </nav>
@@ -56,7 +56,7 @@
         <p>Not sure where to start? The coffee quiz matches you with one in a minute.</p>
       </div>
       <div class="about-actions">
-        <a href="index.html" class="btn btn-link">Shop the coffees</a>
+        <a href="shop.html" class="btn btn-link">Shop the coffees</a>
         <a href="quiz.html" class="btn btn-secondary btn-link">Take the coffee quiz</a>
       </div>
     </section>
@@ -77,7 +77,7 @@
         const coffees = products.filter((p) => p.region === region);
         const countries = [...new Set(coffees.map((p) => p.country))].sort();
         return `
-        <a class="card region-card" href="index.html?region=${encodeURIComponent(region)}">
+        <a class="card region-card" href="shop.html?region=${encodeURIComponent(region)}">
           <span class="tag ${regionClass(region)}">${escapeHtml(region)}</span>
           <strong>${escapeHtml(countries.join(", "))}</strong>
           <span class="muted">${coffees.length} coffee${coffees.length === 1 ? "" : "s"} →</span>

@@ -15,8 +15,8 @@
   <main class="wide">
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <ol>
-        <li><a href="index.html">Shop</a></li>
-        <li><a href="index.html" id="crumb-region">Coffee</a></li>
+        <li><a href="shop.html">Shop</a></li>
+        <li><a href="shop.html" id="crumb-region">Coffee</a></li>
         <li aria-current="page" id="crumb-name">Loading...</li>
       </ol>
     </nav>
@@ -93,7 +93,7 @@
   <script src="data/fallback.js"></script>
   <script src="app.js"></script>
   <script>
-    renderNav("index.html");
+    renderNav("shop.html");
 
     const productId = currentProductId(new URLSearchParams(window.location.search).get("id") || LEGACY_PRODUCT_ID);
 
@@ -137,7 +137,7 @@
       // The middle crumb links back to the shop already filtered to this region.
       const crumbRegion = document.getElementById("crumb-region");
       crumbRegion.textContent = product.region;
-      crumbRegion.href = `index.html?region=${encodeURIComponent(product.region)}`;
+      crumbRegion.href = `shop.html?region=${encodeURIComponent(product.region)}`;
       document.getElementById("crumb-name").textContent = product.name;
       const image = document.getElementById("product-image");
       image.src = product.image;
@@ -279,7 +279,7 @@
         allProducts = await getProducts();
         product = allProducts.find((p) => p.id === productId) || null;
         if (!product) {
-          showUnavailable("Product not found", `We couldn’t find that coffee. <a href="index.html">Browse all coffees</a>`);
+          showUnavailable("Product not found", `We couldn’t find that coffee. <a href="shop.html">Browse all coffees</a>`);
           return;
         }
         renderProduct();

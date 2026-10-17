@@ -417,6 +417,37 @@ function renderStars(rating) {
   return `<span class="stars-outer">★★★★★<span class="stars-inner" style="width:${pct}%">★★★★★</span></span>`;
 }
 
+// Average rating and review count per product: { "1001": { total, count, avg }, ... }.
+function ratingsByProduct(reviews) {
+  const ratings = {};
+  reviews.forEach((r) => {
+    const entry = (ratings[r.productId] ||= { total: 0, count: 0 });
+    entry.total += r.rating;
+    entry.count += 1;
+    entry.avg = entry.total / entry.count;
+  });
+  return ratings;
+}
+
+// A coffee card linking to its product page (shop grid and Home's featured coffees).
+// `rating` is that coffee's entry from ratingsByProduct(), if it has reviews.
+function renderProductCard(p, rating) {
+  const ratingLine = rating
+    ? `${renderStars(rating.avg)} <span class="muted">(${rating.count})</span>`
+    : `<span class="muted">No reviews yet</span>`;
+  return `
+    <a class="card product-card" href="product.html?id=${encodeURIComponent(p.id)}">
+      <img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.imageAlt)}" data-roast="${p.roast.toLowerCase()}" loading="lazy" />
+      <div class="product-card-body">
+        <div class="product-tags">${renderProductTags(p)}</div>
+        <h2>${escapeHtml(p.name)}</h2>
+        <p class="muted">${escapeHtml(p.country)} · ${escapeHtml(p.tastingNotes)}</p>
+        <div class="product-card-rating">${ratingLine}</div>
+        <div class="product-card-price">${isPurchasable(p) ? `From ${formatMoney(lowestPrice(p))}` : `<span class="muted">Currently unavailable</span>`}</div>
+      </div>
+    </a>`;
+}
+
 // ---------- Cart ----------
 
 function getCart() {
@@ -658,7 +689,8 @@ function renderNav(activePage) {
   if (!mount) return;
 
   const links = [
-    { href: "index.html", label: "Shop" },
+    { href: "index.html", label: "Home" },
+    { href: "shop.html", label: "Shop" },
     { href: "reviews.html", label: "Reviews" },
     { href: "quiz.html", label: "Quiz" },
   ];
@@ -721,7 +753,8 @@ function renderFooter(activePage) {
     ? { href: "account.html", label: "Your account" }
     : { href: "login.html", label: "Log in" };
   const links = [
-    { href: "index.html", label: "Shop" },
+    { href: "index.html", label: "Home" },
+    { href: "shop.html", label: "Shop" },
     { href: "quiz.html", label: "Coffee quiz" },
     { href: "reviews.html", label: "Reviews" },
     { href: "about.html", label: "About" },

@@ -16,7 +16,7 @@
     <div class="page-head">
       <nav class="breadcrumb" aria-label="Breadcrumb">
         <ol>
-          <li><a href="index.html">Shop</a></li>
+          <li><a href="shop.html">Shop</a></li>
           <li aria-current="page">Your account</li>
         </ol>
       </nav>
@@ -66,7 +66,7 @@
       const orders = getOrders(username);
       const el = document.getElementById("account-orders");
       if (!orders.length) {
-        el.innerHTML = `<div class="empty-state">No orders yet. <a href="index.html">Shop coffee</a></div>`;
+        el.innerHTML = `<div class="empty-state">No orders yet. <a href="shop.html">Shop coffee</a></div>`;
         return;
       }
       el.innerHTML = orders

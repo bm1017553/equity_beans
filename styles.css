@@ -2344,6 +2344,111 @@ button.btn.is-loading:disabled {
   font-size: 0.85rem;
 }
 
+/* ---------- Home page ---------- */
+
+/* Big banner: the bean photo under the brand's brown gradient, like the login panel */
+.home-hero {
+  padding: clamp(40px, 7vw, 80px) clamp(24px, 5vw, 56px);
+  border-radius: var(--radius);
+  color: var(--header-text);
+  background:
+    linear-gradient(120deg, rgba(42, 34, 30, 0.95) 0%, rgba(107, 58, 30, 0.86) 55%, rgba(181, 84, 28, 0.7) 100%),
+    url("coffee-beans.jpg") center / cover;
+}
+
+.home-kicker {
+  margin: 0 0 8px;
+  color: var(--header-accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home-hero h1 {
+  margin: 0 0 12px;
+  max-width: 620px;
+  color: #fff;
+  font-size: clamp(2rem, 4.5vw, 3rem);
+}
+
+.home-hero p:not(.home-kicker) {
+  margin: 0;
+  max-width: 520px;
+  font-size: 1.1rem;
+  opacity: 0.92;
+}
+
+.home-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+/* Outline button for dark backgrounds */
+a.btn-link.btn-hero-outline {
+  background: transparent;
+  border-color: var(--header-text);
+  color: var(--header-text);
+}
+
+a.btn-link.btn-hero-outline:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #fff;
+  color: #fff;
+}
+
+.home-section {
+  margin-top: 44px;
+}
+
+/* Section title on the left, "See all" link on the right */
+.home-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.home-section-head h2 {
+  margin: 0;
+}
+
+.home-section-head p {
+  margin: 4px 0 0;
+}
+
+.home-section-head .continue-link {
+  flex-shrink: 0;
+}
+
+.home-quiz {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-top: 44px;
+  padding: 28px 32px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+.home-quiz h2 {
+  margin: 0 0 4px;
+  color: var(--accent-dark);
+}
+
+.home-quiz p {
+  margin: 0;
+}
+
+.home-quiz .btn-link {
+  flex-shrink: 0;
+}
+
 /* ---------- About page ---------- */
 
 .about-hero {
@@ -2724,6 +2829,16 @@ button.btn.is-loading:disabled {
   .about-cards,
   .region-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-section-head,
+  .home-quiz {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-quiz {
+    padding: 22px 20px;
   }
 
   /* Name/email and topic/order are too cramped side by side on a phone */

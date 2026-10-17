@@ -162,9 +162,9 @@ many reviews, and so can one customer.
 | `comment`   | string (≤ 1000)      | string             | Review body                                                         |
 | `date`      | string `YYYY-MM-DD`  | string             | Shown on the review, and the sort key                               |
 
-**Open item:** the validator caps `comment` at 1000 characters, but `reviews.html` has a character
-counter with no `maxlength` attribute. Pick one number and set it in both places, or the form will
-accept text the database rejects.
+**Comment length:** the validator caps `comment` at 1000 characters, and the review box on
+`reviews.html` has the same `maxlength="1000"`, with a "0 / 1000 characters" counter. The form can't
+accept text the database would reject.
 
 **Reviews belong to accounts.** Only a logged-in customer can write one, and the browser records
 who with `username` (converted to `userId` at the API, see the table at the end). `name` stays as

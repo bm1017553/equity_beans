@@ -32,7 +32,7 @@
         "bsonType": "string",
         "minLength": 1,
         "maxLength": 1000,
-        "description": "Review body. The reviews page character counter should enforce the same 1000."
+        "description": "Review body. The review box on reviews.html has the same maxlength of 1000."
       },
       "date": {
         "bsonType": "string",

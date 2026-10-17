@@ -63,7 +63,7 @@
             </div>
             <div>
               <label for="comment">Your review</label>
-              <textarea id="comment" rows="4" required placeholder="What did you think?"></textarea>
+              <textarea id="comment" rows="4" required maxlength="1000" placeholder="What did you think?"></textarea>
               <span class="char-count" id="char-count">0 characters</span>
             </div>
             <button type="submit" class="btn btn-block">Post review</button>
@@ -172,9 +172,10 @@
 
     // ---------- Character counter ----------
 
+    // Same limit as reviews.comment in mongo/reviews.validator.json (maxlength on the textarea).
     function updateCharCount() {
       const length = commentInput.value.length;
-      charCount.textContent = `${length} character${length === 1 ? "" : "s"}`;
+      charCount.textContent = `${length} / ${commentInput.maxLength} characters`;
     }
 
     commentInput.addEventListener("input", updateCharCount);

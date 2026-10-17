@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Coffee Quiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main>
+    <div class="page-head">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="index.html">Shop</a></li>
+          <li aria-current="page">Coffee Quiz</li>
+        </ol>
+      </nav>
+      <h1>Find your coffee</h1>
+      <p class="quiz-lead">Six quick questions, and we’ll match you with a coffee from our shop. You can change any answer afterward. No email needed.</p>
+    </div>
+
+    <section class="card quiz-card" id="quiz" aria-live="polite">
+      <div class="quiz-progress">
+        <span class="quiz-step" id="quiz-step"></span>
+        <div class="quiz-progress-track" aria-hidden="true"><div class="quiz-progress-fill" id="quiz-progress-fill"></div></div>
+      </div>
+
+      <h2 class="quiz-question" id="quiz-question" tabindex="-1"></h2>
+      <p class="quiz-hint" id="quiz-hint" hidden></p>
+      <div class="quiz-options" id="quiz-options"></div>
+
+      <div class="quiz-nav">
+        <button type="button" class="btn btn-secondary" id="quiz-back">Back</button>
+        <button type="button" class="btn" id="quiz-next" disabled>Next</button>
+      </div>
+    </section>
+
+    <section class="quiz-results" id="quiz-results" hidden aria-labelledby="results-title">
+      <h2 id="results-title" class="quiz-results-title">Your best match</h2>
+
+      <article class="action-box quiz-match" id="quiz-top"></article>
+
+      <h3 class="quiz-runners-title" id="quiz-runners-title">You might also like</h3>
+      <div class="quiz-runners" id="quiz-runners"></div>
+
+      <section class="card quiz-summary" aria-labelledby="summary-title">
+        <h3 class="quiz-runners-title" id="summary-title">Your answers</h3>
+        <dl id="quiz-summary"></dl>
+      </section>
+
+      <p class="account-nudge" id="quiz-save-note" hidden><a href="login.html?next=account.html">Log in</a> to keep these matches with your account.</p>
+
+      <div class="quiz-restart">
+        <button type="button" class="btn btn-secondary" id="quiz-retake">Retake the quiz</button>
+        <a href="index.html" class="continue-link">Browse all coffees</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    renderNav("quiz.html");
+
+    // Each answer can carry what it means for the match:
+    //   roasts  - roasts that suit the answer
+    //   flavors - flavor groups (see FLAVOR_LABELS in app.js) the answer points to
+    //   fit     - the reason shown on a match that suits the answer
+    //   option  - which version of the coffee to put in the cart
+    const QUESTIONS = [
+      {
+        id: "style",
+        summary: "How you drink it",
+        title: "How do you usually drink your coffee?",
+        options: [
+          { value: "black", label: "Black", hint: "Nothing added", roasts: ["Light", "Medium"], flavors: ["citrus", "berry", "floral", "tea", "stone-fruit"], fit: "Shines black" },
+          { value: "milk", label: "With a little milk", hint: "Or cream", roasts: ["Medium", "Dark"], flavors: ["chocolate", "caramel", "nutty"], fit: "Holds up to milk" },
+          { value: "sweet", label: "Sweet and creamy", hint: "Lattes, mochas", roasts: ["Dark"], flavors: ["chocolate", "caramel", "nutty"], fit: "Great in lattes" },
+          { value: "espresso", label: "Espresso", hint: "Short and strong", roasts: ["Medium", "Dark"], flavors: ["chocolate", "caramel", "spice"], fit: "Made for espresso" },
+        ],
+      },
+      {
+        id: "taste",
+        summary: "Sounds better",
+        title: "Tell us what sounds better to you.",
+        options: [
+          { value: "milk-chocolate", label: "Milk chocolate", flavors: ["chocolate", "caramel", "nutty"] },
+          { value: "cherries", label: "Dark chocolate covered cherries", flavors: ["chocolate", "berry", "stone-fruit", "dried-fruit"] },
+          { value: "jasmine-tea", label: "Jasmine tea", flavors: ["floral", "tea", "citrus"] },
+          { value: "carrot-cake", label: "Carrot cake", flavors: ["spice", "nutty", "caramel", "earthy"] },
+          { value: "lemon-bar", label: "Lemon bar", flavors: ["citrus", "stone-fruit", "floral"] },
+          { value: "peach-cobbler", label: "Peach cobbler", flavors: ["stone-fruit", "orchard-fruit", "caramel"] },
+        ],
+      },
+      {
+        id: "avoid",
+        type: "multi",
+        max: 2,
+        summary: "Rather avoid",
+        title: "Is there anything you’d rather not taste?",
+        hint: "Pick up to 2.",
+        // "none" can't be combined with the others.
+        options: [
+          { value: "sour", label: "Sour or tangy", hint: "Lemon, orange", flavors: ["citrus"] },
+          { value: "floral", label: "Flowery or perfumey", hint: "Jasmine, hibiscus", flavors: ["floral"] },
+          { value: "fruity", label: "Fruity", hint: "Berries, stone fruit, dried fruit", flavors: ["berry", "stone-fruit", "orchard-fruit", "dried-fruit"] },
+          { value: "chocolate", label: "Chocolatey", hint: "Cocoa, dark chocolate", flavors: ["chocolate"] },
+          { value: "earthy", label: "Earthy", hint: "Cedar, forest floor", flavors: ["earthy"] },
+          { value: "spicy", label: "Spicy", hint: "Warm spice, tobacco", flavors: ["spice"] },
+          { value: "nutty", label: "Nutty", hint: "Walnut, roasted nuts", flavors: ["nutty"] },
+          { value: "none", label: "Nothing, I’m open to anything", flavors: [] },
+        ],
+      },
+      {
+        id: "region",
+        summary: "Food region",
+        title: "Which region’s food do you like best?",
+        // Values match product.region; `place` is how the region reads in a sentence.
+        options: [
+          { value: "Central American", label: "Central American", hint: "Tamales, pupusas, gallo pinto", place: "Central America" },
+          { value: "South American", label: "South American", hint: "Ceviche, arepas, churrasco", place: "South America" },
+          { value: "Asian", label: "Asian", hint: "Pho, satay, curry", place: "Asia" },
+          { value: "Central African", label: "Central African", hint: "Brochettes, moambe, plantains", place: "Central Africa" },
+          { value: "East African", label: "East African", hint: "Injera, nyama choma, pilau", place: "East Africa" },
+          { value: "South African", label: "Southern African", hint: "Nsima, relish, peanut stew", place: "Southern Africa" },
+          { value: "any", label: "I love it all", hint: "No preference" },
+        ],
+      },
+      {
+        id: "time",
+        summary: "When you drink it",
+        title: "When do you usually have coffee?",
+        options: [
+          { value: "morning", label: "First thing in the morning", hint: "Light or medium", roasts: ["Light", "Medium"], fit: "Good morning cup" },
+          { value: "afternoon", label: "Afternoon pick-me-up", hint: "Medium", roasts: ["Medium"], fit: "Afternoon pick-me-up" },
+          { value: "evening", label: "After dinner", hint: "Dark", roasts: ["Dark"], fit: "Great after dinner" },
+          { value: "all-day", label: "All day long", hint: "No preference", roasts: [] },
+        ],
+      },
+      {
+        id: "brew",
+        summary: "How you brew",
+        title: "How do you make coffee at home?",
+        options: [
+          { value: "drip", label: "Drip machine or pour-over", hint: "We’ll grind it for you", option: "Ground & Roasted" },
+          { value: "french-press", label: "French press", hint: "We’ll grind it for you", option: "Ground & Roasted" },
+          { value: "cold-brew", label: "Cold brew", hint: "We’ll grind it for you", option: "Ground & Roasted" },
+          { value: "grinder", label: "I grind my own beans", hint: "Freshest flavor", option: "Whole Bean & Roasted" },
+          { value: "roaster", label: "I roast my own", hint: "Green, unroasted beans", option: "Whole Bean & Unroasted" },
+          { value: "unsure", label: "Not sure yet", hint: "We’ll start you on ground", option: "Ground & Roasted" },
+        ],
+      },
+    ];
+
+    const quizEl = document.getElementById("quiz");
+    const resultsEl = document.getElementById("quiz-results");
+    const optionsEl = document.getElementById("quiz-options");
+    const backBtn = document.getElementById("quiz-back");
+    const nextBtn = document.getElementById("quiz-next");
+
+    let products = [];
+    let current = 0;
+    // True after "Change" on the results page: Next then goes straight back to the results.
+    let editing = false;
+    const answers = {};
+
+    function resetAnswers() {
+      Object.assign(answers, { style: null, taste: null, avoid: [], region: null, time: null, brew: null });
+    }
+    resetAnswers();
+
+    // ---------- Rendering one question at a time ----------
+
+    function isAnswered(q) {
+      return q.type === "multi" ? answers[q.id].length > 0 : answers[q.id] !== null;
+    }
+
+    function isSelected(q, value) {
+      return q.type === "multi" ? answers[q.id].includes(value) : answers[q.id] === value;
+    }
+
+    function renderQuestion() {
+      const q = QUESTIONS[current];
+      const step = current + 1;
+      const multi = q.type === "multi";
+
+      document.getElementById("quiz-step").textContent = `Question ${step} of ${QUESTIONS.length}`;
+      document.getElementById("quiz-progress-fill").style.width = `${(step / QUESTIONS.length) * 100}%`;
+      document.getElementById("quiz-question").textContent = q.title;
+
+      const hint = document.getElementById("quiz-hint");
+      hint.hidden = !multi;
+      hint.textContent = multi ? q.hint : "";
+
+      optionsEl.setAttribute("role", multi ? "group" : "radiogroup");
+      optionsEl.setAttribute("aria-labelledby", "quiz-question");
+      // At the pick limit, the other options are disabled until one is unpicked ("none" stays
+      // available because picking it replaces the others).
+      const atLimit = multi && answers[q.id].length >= q.max;
+      optionsEl.innerHTML = q.options
+        .map((o) => {
+          const selected = isSelected(q, o.value);
+          const state = multi ? `aria-pressed="${selected}"` : `role="radio" aria-checked="${selected}"`;
+          const disabled = atLimit && !selected && o.value !== "none" ? "disabled" : "";
+          return `
+        <button type="button" class="quiz-option" data-value="${escapeHtml(o.value)}" ${state} ${disabled}>
+          <span class="quiz-option-label">${escapeHtml(o.label)}</span>
+          ${o.hint ? `<span class="quiz-option-hint">${escapeHtml(o.hint)}</span>` : ""}
+        </button>`;
+        })
+        .join("");
+
+      backBtn.hidden = current === 0;
+      nextBtn.disabled = !isAnswered(q);
+      nextBtn.textContent = editing ? "Update my match" : current === QUESTIONS.length - 1 ? "See my match" : "Next";
+    }
+
+    function toggleMulti(q, value) {
+      const picked = answers[q.id];
+      if (value === "none") return picked.includes("none") ? [] : ["none"];
+      const others = picked.filter((v) => v !== "none");
+      return others.includes(value) ? others.filter((v) => v !== value) : [...others, value].slice(0, q.max);
+    }
+
+    optionsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".quiz-option");
+      if (!btn || btn.disabled) return;
+      const q = QUESTIONS[current];
+      const value = btn.dataset.value;
+      answers[q.id] = q.type === "multi" ? toggleMulti(q, value) : value;
+
+      renderQuestion();
+      // Keep keyboard focus on the option that was just chosen.
+      const again = optionsEl.querySelector(`[data-value="${CSS.escape(value)}"]`);
+      if (again) again.focus();
+    });
+
+    function goTo(index) {
+      current = index;
+      renderQuestion();
+      document.getElementById("quiz-question").focus();
+    }
+
+    nextBtn.addEventListener("click", () => {
+      if (!isAnswered(QUESTIONS[current])) return;
+      if (editing || current === QUESTIONS.length - 1) showResults();
+      else goTo(current + 1);
+    });
+
+    backBtn.addEventListener("click", () => {
+      if (current > 0) goTo(current - 1);
+    });
+
+    // Enter moves forward once the current question is answered. Buttons already
+    // handle Enter themselves, so this only applies when focus is elsewhere (e.g. the question).
+    quizEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.target.closest("button") && !nextBtn.disabled) {
+        nextBtn.click();
+      }
+    });
+
+    // ---------- Scoring ----------
+
+    function optionFor(questionId, value) {
+      return QUESTIONS.find((q) => q.id === questionId).options.find((o) => o.value === value);
+    }
+
+    // The food answer has the most say: each flavor a coffee shares with it (5) is worth
+    // more than any other single answer, so the closest flavor match nearly always wins and
+    // the other answers choose among the closest ones. Region (4) counts most of those, then
+    // time of day (2) and drink style (1 for a suitable roast, 1 for a suitable flavor).
+    // Each flavor they'd rather avoid costs 8: more than any one other answer, so it rules a
+    // coffee out unless two or more of its other flavors match the food they picked.
+    const FLAVOR_POINTS = 5;
+    const REGION_POINTS = 4;
+    const TIME_POINTS = 2;
+    const STYLE_POINTS = 1;
+    const AVOID_POINTS = 8;
+
+    function avoidedFlavors() {
+      return answers.avoid.flatMap((value) => optionFor("avoid", value).flavors);
+    }
+
+    // Equally good matches are ordered by a hash of the answers instead of by name, so
+    // ties don't always go to the same coffee, but the same answers give the same result.
+    function tiebreak(productId) {
+      const key = [answers.style, answers.taste, [...answers.avoid].sort().join(","), answers.region, answers.time, productId].join("|");
+      let hash = 2166136261;
+      for (const ch of key) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619);
+      // Final mix, so IDs that differ only in the last digit don't always sort the same way.
+      hash = Math.imul(hash ^ (hash >>> 16), 0x85ebca6b);
+      hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35);
+      return (hash ^ (hash >>> 16)) >>> 0;
+    }
+
+    function scoreProducts() {
+      const style = optionFor("style", answers.style);
+      const tasteFlavors = optionFor("taste", answers.taste).flavors;
+      const timeRoasts = optionFor("time", answers.time).roasts;
+      const avoid = avoidedFlavors();
+
+      // Only suggest coffees that can actually be bought right now. Coffees sharing at
+      // least one wanted flavor with the food answer always rank above those sharing none.
+      return products
+        .filter(isPurchasable)
+        .map((p) => {
+          const shared = p.flavors.filter((f) => tasteFlavors.includes(f));
+          const avoided = p.flavors.filter((f) => avoid.includes(f));
+          const regionFit = p.region === answers.region;
+          const timeFit = timeRoasts.includes(p.roast);
+          const styleFit = style.roasts.includes(p.roast);
+          const styleFlavorFit = p.flavors.some((f) => style.flavors.includes(f));
+          return {
+            product: p,
+            shared,
+            // Shared flavors that aren't also ones they'd rather avoid.
+            wanted: shared.filter((f) => !avoided.includes(f)),
+            avoided,
+            regionFit,
+            timeFit,
+            styleFit,
+            score:
+              shared.length * FLAVOR_POINTS -
+              avoided.length * AVOID_POINTS +
+              (regionFit ? REGION_POINTS : 0) +
+              (timeFit ? TIME_POINTS : 0) +
+              (styleFit ? STYLE_POINTS : 0) +
+              (styleFlavorFit ? STYLE_POINTS : 0),
+            similarity: shared.length / new Set([...p.flavors, ...tasteFlavors]).size,
+            tiebreak: tiebreak(p.id),
+          };
+        })
+        .sort(
+          (a, b) =>
+            (b.wanted.length > 0) - (a.wanted.length > 0) ||
+            b.score - a.score ||
+            b.similarity - a.similarity ||
+            a.tiebreak - b.tiebreak
+        );
+    }
+
+    function placeOf(region) {
+      return optionFor("region", region).place;
+    }
+
+    function reasonChips(match) {
+      const chips = match.wanted.map((f) => `<span class="tag">${escapeHtml(flavorLabel(f))}</span>`);
+      if (match.regionFit) {
+        chips.push(`<span class="tag ${regionClass(match.product.region)}">From ${escapeHtml(placeOf(match.product.region))}</span>`);
+      }
+      if (match.timeFit) chips.push(`<span class="tag">${escapeHtml(optionFor("time", answers.time).fit)}</span>`);
+      if (match.styleFit) chips.push(`<span class="tag">${escapeHtml(optionFor("style", answers.style).fit)}</span>`);
+      return chips.join("");
+    }
+
+    // Says why the match isn't from the region they picked, when it isn't.
+    function regionNote(match) {
+      if (answers.region === "any" || match.regionFit) return "";
+      return `Our coffees from ${placeOf(answers.region)} aren’t as close a match for your other answers, so here’s one from ${placeOf(match.product.region)}.`;
+    }
+
+    // Owns up when the match still has a flavor they'd rather avoid.
+    function avoidNote(match) {
+      if (!match.avoided.length) return "";
+      const notes = match.avoided.map((f) => flavorLabel(f).toLowerCase()).join(" and ");
+      return `It has ${notes} notes, which you’d rather avoid, but it’s still the best fit for your other answers.`;
+    }
+
+    function answerText(q) {
+      return q.type === "multi"
+        ? answers[q.id].map((value) => optionFor(q.id, value).label).join(", ")
+        : optionFor(q.id, answers[q.id]).label;
+    }
+
+    // ---------- Results ----------
+
+    function showResults() {
+      editing = false;
+      const ranked = scoreProducts();
+      const [top, ...rest] = ranked;
+      const runners = rest.slice(0, 2);
+      const notes = [avoidNote(top), regionNote(top)].filter(Boolean);
+      const optionName = optionFor("brew", answers.brew).option;
+      // Use the option that fits how they brew, unless it is sold out.
+      const option = availableOptions(top.product).find((o) => o.name === optionName) || availableOptions(top.product)[0];
+      const unitPrice = effectivePrice(option);
+      const href = `product.html?id=${encodeURIComponent(top.product.id)}`;
+
+      document.getElementById("quiz-top").innerHTML = `
+        <a href="${href}" class="quiz-match-image" tabindex="-1" aria-hidden="true">
+          <img src="${escapeHtml(top.product.image)}" alt="" data-roast="${top.product.roast.toLowerCase()}" />
+        </a>
+        <div class="quiz-match-info">
+          <div class="product-tags">${renderProductTags(top.product)}</div>
+          <h3><a href="${href}">${escapeHtml(top.product.name)}</a></h3>
+          <p class="tasting-notes">${escapeHtml(top.product.tastingNotes)}</p>
+          <div class="quiz-why">
+            <span class="field-label">Why it’s a match</span>
+            <div class="rec-shared">${reasonChips(top) || `<span class="muted">Closest overall fit</span>`}</div>
+          </div>
+          ${notes.map((note) => `<p class="quiz-match-note">${escapeHtml(note)}</p>`).join("")}
+          <p class="quiz-option-pick">${option.name === optionName
+            ? `We suggest <strong>${escapeHtml(option.name)}</strong> for how you brew.`
+            : `${escapeHtml(optionName)} is sold out for this coffee, so we picked <strong>${escapeHtml(option.name)}</strong>.`}</p>
+          <button type="button" class="btn btn-block" id="quiz-add">Add to Cart — ${formatMoney(unitPrice)}</button>
+          <p class="error-text" id="quiz-add-msg" role="status"></p>
+        </div>`;
+
+      document.getElementById("quiz-runners").innerHTML = runners
+        .map((m) => {
+          const chips = reasonChips(m);
+          return `
+        <a class="card quiz-runner" href="product.html?id=${encodeURIComponent(m.product.id)}">
+          ${renderThumb(m.product)}
+          <div>
+            <strong>${escapeHtml(m.product.name)}</strong>
+            <span class="muted">${escapeHtml(m.product.tastingNotes)}</span>
+            ${chips ? `<div class="rec-shared">${chips}</div>` : ""}
+          </div>
+        </a>`;
+        })
+        .join("");
+      document.getElementById("quiz-runners-title").hidden = runners.length === 0;
+
+      document.getElementById("quiz-summary").innerHTML = QUESTIONS.map(
+        (q, i) => `
+        <div class="quiz-summary-row">
+          <dt>${escapeHtml(q.summary)}</dt>
+          <dd>${escapeHtml(answerText(q))}</dd>
+          <dd><button type="button" class="quiz-summary-change" data-question="${i}" aria-label="Change ${escapeHtml(q.summary.toLowerCase())}">Change</button></dd>
+        </div>`
+      ).join("");
+
+      document.getElementById("quiz-add").addEventListener("click", (e) => {
+        addToCart({ productId: top.product.id, name: top.product.name, option: option.name, unitPrice, qty: 1 });
+        const msg = document.getElementById("quiz-add-msg");
+        msg.classList.add("success");
+        msg.innerHTML = `Added to your cart. <a href="cart.html">View cart</a>`;
+        e.target.disabled = true;
+        e.target.textContent = "Added to Cart";
+      });
+
+      // Remember the matches so the shop's sidebar can show them.
+      saveQuizResult([top, ...runners].map((m) => m.product.id));
+      document.getElementById("quiz-save-note").hidden = Boolean(currentUsername());
+
+      quizEl.hidden = true;
+      resultsEl.hidden = false;
+      document.getElementById("results-title").focus();
+      window.scrollTo(0, 0);
+    }
+
+    function backToQuiz(index) {
+      resultsEl.hidden = true;
+      quizEl.hidden = false;
+      goTo(index);
+    }
+
+    // "Change" keeps every other answer and returns to the results after this one question.
+    document.getElementById("quiz-summary").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-question]");
+      if (!btn) return;
+      editing = true;
+      backToQuiz(Number(btn.dataset.question));
+    });
+
+    document.getElementById("quiz-retake").addEventListener("click", () => {
+      resetAnswers();
+      editing = false;
+      backToQuiz(0);
+    });
+
+    async function init() {
+      try {
+        products = await getProducts();
+        if (!products.some(isPurchasable)) {
+          quizEl.innerHTML = `<p>All of our coffees are sold out right now, so there’s nothing to match you with. Please check back soon.</p>
+            <a href="index.html" class="continue-link">Browse all coffees</a>`;
+          return;
+        }
+        renderQuestion();
+      } catch (err) {
+        quizEl.innerHTML = `<p class="error-text">Could not load the coffees. Make sure the site is running on a local server.</p>`;
+        console.error(err);
+      }
+    }
+
+    document.getElementById("results-title").setAttribute("tabindex", "-1");
+    init();
+  </script>
+</body>
+</html>

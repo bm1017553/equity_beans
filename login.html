@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Log In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide login-main">
+    <div class="login-layout">
+      <section class="login-intro" aria-labelledby="intro-title">
+        <div class="login-intro-body">
+          <p class="login-kicker">Equity Beans</p>
+          <h1 id="intro-title">Welcome back</h1>
+          <p><span id="intro-action">Log in</span> to review our coffees, keep your quiz matches, and see every order you’ve placed.</p>
+
+          <ul class="login-perks">
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></svg>
+              Review any coffee in the shop
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l2 2 3.5-3.5M4 15l2 2 3.5-3.5M13 8h7M13 16h7" /></svg>
+              Keep your coffee quiz matches
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z" /><path d="M9 8.5h6M9 12.5h6" /></svg>
+              See your order history anytime
+            </li>
+          </ul>
+          <p class="login-carry">Took the quiz or placed an order as a guest just now? We’ll save it to your account when you log in or sign up.</p>
+        </div>
+
+        <figure class="login-quote" id="login-quote" hidden>
+          <blockquote id="quote-text"></blockquote>
+          <figcaption id="quote-by"></figcaption>
+        </figure>
+
+        <dl class="login-stats" id="login-stats" hidden>
+          <div><dt>Coffees</dt><dd id="stat-coffees"></dd></div>
+          <div><dt>Regions</dt><dd id="stat-regions"></dd></div>
+          <div><dt>Fair Trade</dt><dd>100%</dd></div>
+        </dl>
+      </section>
+
+      <div class="action-box login-box">
+        <h2 id="login-title">Log in</h2>
+
+        <form class="stacked" id="login-form" novalidate>
+          <div>
+            <label for="username">Username</label>
+            <input type="text" id="username" autocomplete="username" aria-describedby="username-error" />
+            <span class="error-text" id="username-error"></span>
+          </div>
+          <div>
+            <label for="password">Password</label>
+            <div class="password-field">
+              <input type="password" id="password" autocomplete="current-password" aria-describedby="password-error password-caps" />
+              <button type="button" class="password-toggle" data-target="password" aria-label="Show password" aria-pressed="false">Show</button>
+            </div>
+            <span class="caps-warning" id="password-caps" hidden>Caps Lock is on</span>
+            <span class="error-text" id="password-error"></span>
+          </div>
+          <button type="submit" class="btn btn-block" id="login-btn">Log In</button>
+          <p class="error-text" id="login-msg" role="status"></p>
+        </form>
+
+        <form class="stacked" id="signup-form" novalidate hidden>
+          <div>
+            <label for="new-username">Username</label>
+            <input type="text" id="new-username" autocomplete="username" maxlength="30" aria-describedby="new-username-hint new-username-error" />
+            <span class="field-hint" id="new-username-hint">3–30 characters: letters, numbers, dots, dashes or underscores.</span>
+            <span class="error-text" id="new-username-error"></span>
+          </div>
+          <div>
+            <label for="new-password">Password</label>
+            <div class="password-field">
+              <input type="password" id="new-password" autocomplete="new-password" aria-describedby="new-password-hint new-password-error new-password-caps" />
+              <button type="button" class="password-toggle" data-target="new-password" aria-label="Show password" aria-pressed="false">Show</button>
+            </div>
+            <span class="field-hint" id="new-password-hint">At least 8 characters.</span>
+            <span class="caps-warning" id="new-password-caps" hidden>Caps Lock is on</span>
+            <span class="error-text" id="new-password-error"></span>
+          </div>
+          <div>
+            <label for="confirm-password">Confirm password</label>
+            <input type="password" id="confirm-password" autocomplete="new-password" aria-describedby="confirm-password-error" />
+            <span class="error-text" id="confirm-password-error"></span>
+          </div>
+          <button type="submit" class="btn btn-block" id="signup-btn">Create Account</button>
+          <p class="error-text" id="signup-msg" role="status"></p>
+        </form>
+
+        <p class="login-switch" id="to-signup">New here? <button type="button" class="link-button" data-mode="signup">Create an account</button></p>
+        <p class="login-switch" id="to-login" hidden>Already have an account? <button type="button" class="link-button" data-mode="login">Log in</button></p>
+
+        <div class="login-divider"><span>or</span></div>
+        <a href="index.html" class="continue-link" id="guest-link">Continue as guest</a>
+
+        <a href="quiz.html" class="quiz-callout">
+          <span class="quiz-callout-question">Don’t know what you want yet?</span>
+          <span class="quiz-callout-link">Take the free coffee quiz (no email needed) →</span>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    renderNav("login.html");
+
+    const loginForm = document.getElementById("login-form");
+    const signupForm = document.getElementById("signup-form");
+    const loginBtn = document.getElementById("login-btn");
+    const signupBtn = document.getElementById("signup-btn");
+    const loginMsg = document.getElementById("login-msg");
+    const signupMsg = document.getElementById("signup-msg");
+    const passwordInput = document.getElementById("password");
+
+    // Return to where the customer came from (e.g. reviews.html?product=...), but only
+    // to a page on this site, never an outside URL.
+    function nextPage() {
+      const next = new URLSearchParams(window.location.search).get("next") || "";
+      return /^[a-z-]+\.html(\?[^\/]*)?$/i.test(next) ? next : "index.html";
+    }
+
+    if (currentUsername()) {
+      window.location.href = nextPage();
+    }
+
+    document.getElementById("guest-link").href = nextPage();
+
+    // ---------- Field validation (shown once a field has been left) ----------
+
+    // Each check returns an error message, or "" when the value is fine.
+    const fields = {
+      username: { form: "login", check: (v) => (v.trim() ? "" : "Please enter your username.") },
+      password: { form: "login", check: (v) => (v ? "" : "Please enter your password.") },
+      "new-username": {
+        form: "signup",
+        check: (v) => {
+          const name = v.trim();
+          if (!name) return "Please choose a username.";
+          if (!USERNAME_PATTERN.test(name)) return "Use 3–30 letters, numbers, dots, dashes or underscores.";
+          return findUser(name) ? "That username is already taken." : "";
+        },
+      },
+      "new-password": {
+        form: "signup",
+        check: (v) => (v.length >= MIN_PASSWORD_LENGTH ? "" : `Use at least ${MIN_PASSWORD_LENGTH} characters.`),
+      },
+      "confirm-password": {
+        form: "signup",
+        check: (v) => {
+          if (!v) return "Please enter your password again.";
+          return v === document.getElementById("new-password").value ? "" : "Passwords don’t match.";
+        },
+      },
+    };
+
+    function validateField(id, show) {
+      const input = document.getElementById(id);
+      const message = fields[id].check(input.value);
+      const showError = show && message !== "";
+      input.classList.toggle("invalid", showError);
+      input.setAttribute("aria-invalid", String(showError));
+      document.getElementById(`${id}-error`).textContent = showError ? message : "";
+      return message === "";
+    }
+
+    // Shows every problem in one form and focuses the first. True when the form is fine.
+    function validateForm(formName) {
+      const ids = Object.keys(fields).filter((id) => fields[id].form === formName);
+      const invalid = ids.filter((id) => !validateField(id, true));
+      if (invalid.length) document.getElementById(invalid[0]).focus();
+      return invalid.length === 0;
+    }
+
+    Object.keys(fields).forEach((id) => {
+      const input = document.getElementById(id);
+      input.addEventListener("blur", () => validateField(id, true));
+      // Clear the error as soon as the customer starts fixing it.
+      input.addEventListener("input", () => {
+        if (input.classList.contains("invalid")) validateField(id, true);
+        // Changing the password can fix (or break) the confirmation below it.
+        if (id === "new-password" && document.getElementById("confirm-password").value) {
+          validateField("confirm-password", true);
+        }
+      });
+    });
+
+    // ---------- Log in / Create account ----------
+
+    let reviewing = null; // the coffee's name, when they came here to review one
+
+    function updateTitle() {
+      const action = signupForm.hidden ? "Log in" : "Create an account";
+      document.getElementById("login-title").textContent = reviewing ? `${action} to review ${reviewing}` : action;
+    }
+
+    function setMode(mode, focus) {
+      const signup = mode === "signup";
+      loginForm.hidden = signup;
+      signupForm.hidden = !signup;
+      document.getElementById("to-signup").hidden = signup;
+      document.getElementById("to-login").hidden = !signup;
+      document.getElementById("intro-title").textContent = signup ? "Join Equity Beans" : "Welcome back";
+      document.getElementById("intro-action").textContent = signup ? "Create a free account" : "Log in";
+      updateTitle();
+
+      // Start the other form clean, and keep the mode in the URL so a reload stays on it.
+      Object.keys(fields).forEach((id) => validateField(id, false));
+      loginMsg.textContent = signupMsg.textContent = "";
+      const url = new URL(window.location.href);
+      if (signup) url.searchParams.set("mode", "signup");
+      else url.searchParams.delete("mode");
+      history.replaceState(null, "", url);
+
+      if (focus) document.getElementById(signup ? "new-username" : "username").focus();
+    }
+
+    document.querySelectorAll("[data-mode]").forEach((btn) => {
+      // Switching forms shouldn't flash a "required" error on the field being left.
+      btn.addEventListener("mousedown", (e) => e.preventDefault());
+      btn.addEventListener("click", () => setMode(btn.dataset.mode, true));
+    });
+
+    setMode(new URLSearchParams(window.location.search).get("mode") === "signup" ? "signup" : "login", false);
+
+    // ---------- Show / hide password ----------
+
+    document.querySelectorAll(".password-toggle").forEach((btn) => {
+      const input = document.getElementById(btn.dataset.target);
+      btn.addEventListener("click", () => {
+        const isHidden = input.type === "password";
+        input.type = isHidden ? "text" : "password";
+        btn.textContent = isHidden ? "Hide" : "Show";
+        btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+        btn.setAttribute("aria-pressed", String(isHidden));
+        input.focus();
+      });
+    });
+
+    // ---------- Caps Lock warning (keyboard events) ----------
+
+    ["password", "new-password"].forEach((id) => {
+      const input = document.getElementById(id);
+      const warning = document.getElementById(`${id}-caps`);
+      const update = (e) => {
+        if (typeof e.getModifierState === "function") warning.hidden = !e.getModifierState("CapsLock");
+      };
+      input.addEventListener("keydown", update);
+      input.addEventListener("keyup", update);
+      input.addEventListener("blur", () => (warning.hidden = true));
+    });
+
+    // ---------- Submit ----------
+
+    // Accounts use the browser's Web Crypto, which only runs on secure pages (http://localhost,
+    // https, or a file opened from disk).
+    const NO_CRYPTO = "Accounts can’t be used on this page. Open the site from http://localhost:8080.";
+
+    // "We saved your quiz matches and 2 orders to your account. " (empty when nothing moved)
+    function savedMessage({ quizzes, orders }) {
+      const parts = [];
+      if (quizzes) parts.push("your quiz matches");
+      if (orders) parts.push(orders === 1 ? "1 order" : `${orders} orders`);
+      return parts.length ? `We saved ${parts.join(" and ")} to your account. ` : "";
+    }
+
+    // Shows a busy label while the password is hashed; pass null to restore the button.
+    function setBusy(btn, label) {
+      btn.disabled = Boolean(label);
+      btn.classList.toggle("is-loading", Boolean(label));
+      btn.textContent = label || btn.dataset.label;
+    }
+    loginBtn.dataset.label = loginBtn.textContent;
+    signupBtn.dataset.label = signupBtn.textContent;
+
+    function finish(username, msg, greeting) {
+      setSession(username);
+      const claimed = claimGuestItems(username);
+      msg.classList.add("success");
+      msg.textContent = `${greeting} ${savedMessage(claimed)}Taking you back…`;
+      // A little longer when there's a "we saved…" line to read.
+      setTimeout(() => {
+        window.location.href = nextPage();
+      }, claimed.quizzes || claimed.orders ? 1800 : 700);
+    }
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loginMsg.classList.remove("success");
+      loginMsg.textContent = "";
+      if (!validateForm("login")) return;
+
+      setBusy(loginBtn, "Logging in…");
+      let username;
+      try {
+        username = await logIn(document.getElementById("username").value.trim(), passwordInput.value);
+      } catch (err) {
+        console.error(err);
+        setBusy(loginBtn, null);
+        loginMsg.textContent = NO_CRYPTO;
+        return;
+      }
+      if (!username) {
+        setBusy(loginBtn, null);
+        loginMsg.textContent = "Username or password is incorrect.";
+        passwordInput.focus();
+        passwordInput.select();
+        return;
+      }
+      finish(username, loginMsg, `Welcome back, ${username}!`);
+    });
+
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      signupMsg.classList.remove("success");
+      signupMsg.textContent = "";
+      if (!validateForm("signup")) return;
+
+      setBusy(signupBtn, "Creating account…");
+      let username;
+      try {
+        username = await createAccount(
+          document.getElementById("new-username").value.trim(),
+          document.getElementById("new-password").value
+        );
+      } catch (err) {
+        setBusy(signupBtn, null);
+        // createAccount's own errors are written for the form; anything else is missing crypto.
+        signupMsg.textContent = err instanceof TypeError ? NO_CRYPTO : err.message;
+        return;
+      }
+      finish(username, signupMsg, `Welcome, ${username}! Your account is ready.`);
+    });
+
+    // ---------- Panel content from the data files ----------
+
+    async function init() {
+      const [products, reviews] = await Promise.all([getProducts(), getReviews()]);
+      const productsById = Object.fromEntries(products.map((p) => [p.id, p]));
+
+      // Personalize the heading when the customer came here to review a specific coffee.
+      const nextParams = new URLSearchParams(nextPage().split("?")[1] || "");
+      const product = productsById[currentProductId(nextParams.get("product"))];
+      if (product) {
+        reviewing = product.name;
+        updateTitle();
+      }
+
+      document.getElementById("stat-coffees").textContent = products.length;
+      document.getElementById("stat-regions").textContent = new Set(products.map((p) => p.region)).size;
+      document.getElementById("login-stats").hidden = false;
+
+      // Feature a random 5-star review, so returning visitors see different ones.
+      const fiveStar = reviews.filter((r) => r.rating === 5);
+      const favorite = fiveStar[Math.floor(Math.random() * fiveStar.length)];
+      if (favorite) {
+        const about = productsById[favorite.productId];
+        document.getElementById("quote-text").textContent = `“${favorite.comment}”`;
+        document.getElementById("quote-by").textContent = `— ${favorite.name}${about ? `, on ${about.name}` : ""}`;
+        document.getElementById("login-quote").hidden = false;
+      }
+    }
+
+    init().catch((err) => console.error(err));
+  </script>
+</body>
+</html>

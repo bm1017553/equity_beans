@@ -1,0 +1,7 @@
+# Lock files Word creates while a .docx is open
+~$*
+
+# Operating system files
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Aprysa Peruvian Coffee</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="index.html">Shop</a></li>
+        <li><a href="index.html" id="crumb-region">Coffee</a></li>
+        <li aria-current="page" id="crumb-name">Loading...</li>
+      </ol>
+    </nav>
+    <div class="page-with-sidebar">
+      <aside class="card rec-sidebar sidebar-quiet" aria-labelledby="side-title">
+        <h2 id="side-title">More like this</h2>
+        <p class="muted" id="side-basis"></p>
+        <div class="rec-list" id="side-list"></div>
+      </aside>
+      <div class="product-main">
+        <div class="card product-hero">
+          <div class="product-media">
+            <img class="product-image" id="product-image" src="coffee-beans.jpg" alt="" />
+          </div>
+          <div class="product-info">
+            <h1 id="product-name">Loading...</h1>
+            <div class="product-meta" id="product-meta"></div>
+            <div class="rating-line">
+              <span id="stars-display"></span>
+              <span id="rating-summary"></span>
+            </div>
+            <p class="muted" id="product-status" hidden></p>
+            <p class="tasting-notes" id="tasting-notes"></p>
+
+            <div class="buy-box" id="buy-box">
+              <div class="buy-price">
+                <span class="price" id="price-display"></span>
+                <s class="price-was" id="price-was" hidden></s>
+                <span class="price-breakdown" id="price-breakdown"></span>
+              </div>
+              <div class="purchase-row">
+                <div class="purchase-option">
+                  <label for="purchase-option">Purchase option</label>
+                  <select id="purchase-option"></select>
+                </div>
+                <div>
+                  <label for="quantity">Quantity</label>
+                  <input type="number" id="quantity" min="1" max="10" step="1" value="1" />
+                </div>
+              </div>
+              <p class="error-text" id="qty-msg"></p>
+              <button class="btn btn-block" id="add-to-cart">Add to Cart</button>
+              <p class="error-text" id="cart-msg"></p>
+            </div>
+          </div>
+        </div>
+
+        <section class="card product-details" id="product-details" aria-labelledby="details-title">
+          <h2 id="details-title">About this coffee</h2>
+          <p id="product-description"></p>
+          <ul class="specs" id="product-specs"></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div class="drawer-backdrop" id="rec-backdrop" hidden></div>
+  <aside class="rec-drawer" id="rec-drawer" role="dialog" aria-modal="true" aria-labelledby="rec-title" hidden>
+    <div class="rec-header">
+      <h2 id="rec-title">Added to your cart</h2>
+      <button type="button" class="rec-close" id="rec-close" aria-label="Close recommendations">×</button>
+    </div>
+    <p class="rec-added" id="rec-added"></p>
+    <h3 class="rec-subtitle" id="rec-subtitle"></h3>
+    <div class="rec-list" id="rec-list"></div>
+    <div class="rec-footer">
+      <a href="cart.html" class="btn btn-link">View cart</a>
+      <button type="button" class="btn btn-secondary" id="rec-continue">Keep shopping</button>
+    </div>
+  </aside>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    renderNav("index.html");
+
+    const productId = currentProductId(new URLSearchParams(window.location.search).get("id") || LEGACY_PRODUCT_ID);
+
+    const optionSelect = document.getElementById("purchase-option");
+    const qtyInput = document.getElementById("quantity");
+    const priceDisplay = document.getElementById("price-display");
+    const breakdown = document.getElementById("price-breakdown");
+    const qtyMsg = document.getElementById("qty-msg");
+    const addBtn = document.getElementById("add-to-cart");
+    const cartMsg = document.getElementById("cart-msg");
+
+    const drawer = document.getElementById("rec-drawer");
+    const backdrop = document.getElementById("rec-backdrop");
+
+    let product = null;
+    let allProducts = [];
+    let lastFocused = null;
+    let cartMsgTimer = null;
+
+    async function refreshRatingSummary() {
+      const reviews = await getReviews(product.id);
+      const reviewsUrl = `reviews.html?product=${encodeURIComponent(product.id)}`;
+      const avg = averageRating(reviews);
+      document.getElementById("stars-display").innerHTML = renderStars(avg);
+      document.getElementById("rating-summary").innerHTML =
+        reviews.length > 0
+          ? `${avg.toFixed(1)} out of 5 (<a href="${reviewsUrl}">${reviews.length} review${reviews.length === 1 ? "" : "s"}</a>)`
+          : `<a href="${reviewsUrl}">No reviews yet — be the first</a>`;
+    }
+
+    function renderProduct() {
+      document.title = `Equity Beans | ${product.name}`;
+      document.getElementById("product-name").textContent = product.name;
+      document.getElementById("product-description").textContent = product.description;
+      document.getElementById("tasting-notes").textContent = product.tastingNotes;
+
+      document.getElementById("product-meta").innerHTML = `
+        ${renderProductTags(product)}
+        <span class="muted">${escapeHtml(product.country)}</span>`;
+
+      // The middle crumb links back to the shop already filtered to this region.
+      const crumbRegion = document.getElementById("crumb-region");
+      crumbRegion.textContent = product.region;
+      crumbRegion.href = `index.html?region=${encodeURIComponent(product.region)}`;
+      document.getElementById("crumb-name").textContent = product.name;
+      const image = document.getElementById("product-image");
+      image.src = product.image;
+      image.alt = product.imageAlt;
+      image.dataset.roast = product.roast.toLowerCase();
+
+      // Built from the typed fields (the same ones stored in MongoDB).
+      const specs = [
+        ["Origin", product.country],
+        ["Region", product.region],
+        ["Roast", product.roast],
+        ["Certification", product.certification],
+        ["Type", product.type],
+      ];
+      document.getElementById("product-specs").innerHTML = specs
+        .map(([label, value]) => `<li>${escapeHtml(label)}: ${escapeHtml(String(value))}</li>`)
+        .join("");
+
+      // Sold-out options stay visible but can't be chosen.
+      optionSelect.innerHTML = product.options
+        .map((o) => {
+          const label = o.available ? o.name : `${o.name} (sold out)`;
+          return `<option value="${escapeHtml(o.name)}" ${o.available ? "" : "disabled"}>${escapeHtml(label)}</option>`;
+        })
+        .join("");
+      const firstAvailable = availableOptions(product)[0];
+      if (firstAvailable) optionSelect.value = firstAvailable.name;
+    }
+
+    function selectedOption() {
+      return product.options.find((o) => o.name === optionSelect.value);
+    }
+
+    function refreshPrice() {
+      const option = selectedOption();
+      const unitPrice = effectivePrice(option);
+      const qty = Number(qtyInput.value);
+      const validQty = isValidQty(qty);
+
+      priceDisplay.textContent = formatMoney(unitPrice);
+      const wasEl = document.getElementById("price-was");
+      wasEl.hidden = !isOnSale(option);
+      wasEl.textContent = formatMoney(option.price);
+      breakdown.textContent = isOnSale(option) ? "sale · per 1 lb bag" : "per 1 lb bag";
+
+      if (!isPurchasable(product)) {
+        addBtn.disabled = true;
+        addBtn.textContent = "Out of stock";
+        optionSelect.disabled = true;
+        qtyInput.disabled = true;
+        qtyMsg.textContent = "This coffee is out of stock right now. Check back soon, or try one of the matches on the left.";
+        return;
+      }
+
+      addBtn.disabled = !validQty;
+
+      if (!validQty) {
+        qtyMsg.textContent = `Please enter a whole number from 1 to ${MAX_QTY}.`;
+        addBtn.textContent = "Add to Cart";
+        return;
+      }
+
+      qtyMsg.textContent = "";
+      // The button carries the live total, so the price and the action read together.
+      addBtn.textContent = `Add to Cart — ${formatMoney(unitPrice * qty)}`;
+    }
+
+    // ---------- Recommendations sidebar ----------
+
+    function renderRecommendations() {
+      const matches = recommendFor(product, allProducts);
+      document.getElementById("rec-subtitle").textContent = matches.length
+        ? `If you like ${product.tastingNotes.toLowerCase()}, try these`
+        : "";
+      document.getElementById("rec-list").innerHTML = renderRecItems(matches);
+    }
+
+    function renderSidebar() {
+      const matches = recommendFor(product, allProducts);
+      document.getElementById("side-basis").textContent = `Coffees that share flavors with ${product.name}.`;
+      document.getElementById("side-list").innerHTML = matches.length
+        ? renderRecItems(matches)
+        : `<p class="muted">No close flavor matches yet.</p>`;
+    }
+
+    function openDrawer(message) {
+      document.getElementById("rec-added").textContent = message;
+      renderRecommendations();
+      lastFocused = document.activeElement;
+      drawer.hidden = false;
+      backdrop.hidden = false;
+      // Next frame, so the slide-in transition runs after the element is shown.
+      requestAnimationFrame(() => {
+        drawer.classList.add("open");
+        backdrop.classList.add("open");
+      });
+      document.getElementById("rec-close").focus();
+    }
+
+    function closeDrawer() {
+      if (drawer.hidden) return;
+      drawer.classList.remove("open");
+      backdrop.classList.remove("open");
+      setTimeout(() => {
+        drawer.hidden = true;
+        backdrop.hidden = true;
+      }, 250);
+      if (lastFocused) lastFocused.focus();
+    }
+
+    document.getElementById("rec-close").addEventListener("click", closeDrawer);
+    document.getElementById("rec-continue").addEventListener("click", closeDrawer);
+    backdrop.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeDrawer();
+    });
+
+    optionSelect.addEventListener("change", refreshPrice);
+    qtyInput.addEventListener("input", refreshPrice);
+
+    addBtn.addEventListener("click", () => {
+      const qty = Number(qtyInput.value);
+      const option = selectedOption();
+      if (!isValidQty(qty) || !isPurchasable(product) || !option.available) return;
+      const unitPrice = effectivePrice(option);
+
+      addToCart({ productId: product.id, name: product.name, option: option.name, unitPrice, qty });
+
+      const message = `${qty} × ${product.name}, ${option.name} (${formatMoney(unitPrice * qty)})`;
+      cartMsg.classList.add("success");
+      cartMsg.innerHTML = `Added ${escapeHtml(message)}. <a href="cart.html">View cart</a>`;
+      clearTimeout(cartMsgTimer);
+      cartMsgTimer = setTimeout(() => (cartMsg.textContent = ""), 4000);
+      openDrawer(message);
+    });
+
+    async function init() {
+      try {
+        allProducts = await getProducts();
+        product = allProducts.find((p) => p.id === productId) || null;
+        if (!product) {
+          showUnavailable("Product not found", `We couldn’t find that coffee. <a href="index.html">Browse all coffees</a>`);
+          return;
+        }
+        renderProduct();
+        renderSidebar();
+        setLastViewed(product.id);
+        refreshPrice();
+        await refreshRatingSummary();
+      } catch (err) {
+        showUnavailable("Product unavailable", "Could not load product data. Make sure the site is running on a local server.");
+        console.error(err);
+      }
+    }
+
+    function showUnavailable(title, messageHtml) {
+      document.getElementById("product-name").textContent = title;
+      document.getElementById("crumb-name").textContent = title;
+      document.getElementById("crumb-region").parentElement.hidden = true;
+      const status = document.getElementById("product-status");
+      status.innerHTML = messageHtml;
+      status.hidden = false;
+      ["buy-box", "product-details", "tasting-notes"].forEach((id) => (document.getElementById(id).hidden = true));
+      document.querySelector(".rating-line").hidden = true;
+      document.querySelector(".rec-sidebar").hidden = true;
+    }
+
+    init();
+  </script>
+</body>
+</html>

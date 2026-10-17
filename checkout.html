@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Checkout</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide">
+    <div class="page-head">
+      <div id="steps"></div>
+      <h1 id="page-title">Checkout</h1>
+    </div>
+
+    <div class="card confirmation" id="order-confirmation" hidden>
+      <p class="confirmation-kicker">Order placed</p>
+      <h2>Thank you, <span id="confirm-name"></span>!</h2>
+      <p>Your order number is <strong id="order-number"></strong>. We’ll email <strong id="confirm-email"></strong> when it ships.</p>
+      <div class="confirm-lines" id="confirm-lines"></div>
+      <div class="summary-row summary-total"><span>Total</span><span id="confirm-total"></span></div>
+      <p class="muted">Demo mode: no payment was taken. Card payments through Square are coming soon.</p>
+      <p class="account-nudge" id="confirm-login" hidden><a href="login.html?next=account.html">Log in</a> to save this order to your account and find it again later.</p>
+      <p class="account-nudge" id="confirm-account" hidden>You’ll find this order in <a href="account.html">your account</a>.</p>
+      <a href="index.html" class="btn btn-link">Continue shopping</a>
+    </div>
+
+    <div class="flow-layout" id="checkout-layout">
+      <form class="card checkout-form" id="checkout-form" novalidate>
+        <h2>Shipping &amp; Contact</h2>
+        <div class="field">
+          <label for="full-name">Full name</label>
+          <input type="text" id="full-name" autocomplete="name" />
+          <span class="error-text" data-error-for="full-name"></span>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" autocomplete="email" />
+          <span class="error-text" data-error-for="email"></span>
+        </div>
+        <div class="field">
+          <label for="address">Street address</label>
+          <input type="text" id="address" autocomplete="street-address" />
+          <span class="error-text" data-error-for="address"></span>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="city">City</label>
+            <input type="text" id="city" autocomplete="address-level2" />
+            <span class="error-text" data-error-for="city"></span>
+          </div>
+          <div class="field field-small">
+            <label for="state">State</label>
+            <input type="text" id="state" maxlength="2" autocomplete="address-level1" placeholder="TX" />
+            <span class="error-text" data-error-for="state"></span>
+          </div>
+          <div class="field field-small">
+            <label for="zip">ZIP</label>
+            <input type="text" id="zip" maxlength="5" inputmode="numeric" autocomplete="postal-code" />
+            <span class="error-text" data-error-for="zip"></span>
+          </div>
+        </div>
+
+        <h2>Payment</h2>
+        <div id="card-container" class="payment-placeholder">
+          Card payment coming soon (Square)
+        </div>
+      </form>
+
+      <aside class="action-box order-box" aria-labelledby="summary-title">
+        <h2 id="summary-title">Order summary</h2>
+        <div class="summary-lines" id="summary-lines"></div>
+        <div class="summary-row"><span>Subtotal</span><span id="subtotal"></span></div>
+        <div class="summary-row"><span>Shipping</span><span id="shipping"></span></div>
+        <div class="summary-row summary-total"><span>Total</span><span id="total"></span></div>
+        <!-- Lives outside the <form> so it can sit in the summary; form="" still submits it. -->
+        <button type="submit" form="checkout-form" class="btn btn-block" id="place-order" disabled>Place Order</button>
+        <p class="action-hint" id="place-hint">Complete your shipping details to place the order.</p>
+        <a href="cart.html" class="continue-link">Edit cart</a>
+      </aside>
+    </div>
+  </main>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    renderNav("checkout.html");
+    document.getElementById("steps").innerHTML = renderSteps(1);
+
+    if (getCart().length === 0) {
+      window.location.href = "cart.html";
+    }
+
+    const form = document.getElementById("checkout-form");
+    const placeOrderBtn = document.getElementById("place-order");
+    const placeHint = document.getElementById("place-hint");
+
+    let productsById = {};
+
+    const validators = {
+      "full-name": (v) => (v.length >= 2 ? "" : "Please enter your full name."),
+      email: (v) => (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "" : "Please enter a valid email address."),
+      address: (v) => (v.length >= 5 ? "" : "Please enter your street address."),
+      city: (v) => (v.length >= 2 ? "" : "Please enter your city."),
+      state: (v) => (/^[A-Za-z]{2}$/.test(v) ? "" : "Use a 2-letter code."),
+      zip: (v) => (/^\d{5}$/.test(v) ? "" : "Enter a 5-digit ZIP."),
+    };
+
+    // Only show a field's error after the user has left it once.
+    const touched = {};
+
+    function fieldValue(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    function validateField(id) {
+      const message = validators[id](fieldValue(id));
+      const isValid = message === "";
+      const input = document.getElementById(id);
+      const showError = touched[id] && !isValid;
+      input.classList.toggle("invalid", showError);
+      document.querySelector(`[data-error-for="${id}"]`).textContent = showError ? message : "";
+      return isValid;
+    }
+
+    function updateFormState() {
+      const formValid = Object.keys(validators)
+        .map(validateField)
+        .every(Boolean);
+      placeOrderBtn.disabled = !formValid;
+      placeHint.hidden = formValid;
+      return formValid;
+    }
+
+    Object.keys(validators).forEach((id) => {
+      const input = document.getElementById(id);
+      input.addEventListener("input", updateFormState);
+      input.addEventListener("blur", () => {
+        touched[id] = true;
+        updateFormState();
+      });
+    });
+
+    document.getElementById("state").addEventListener("input", (e) => {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
+    function renderLines(cart) {
+      return cart
+        .map((line) => {
+          const product = productsById[line.productId];
+          return `
+        <div class="summary-item">
+          ${renderThumb(product)}
+          <div class="summary-item-info">
+            <strong>${escapeHtml(line.name)}</strong>
+            <span class="muted">${line.qty} × ${escapeHtml(line.option)}</span>
+          </div>
+          <span>${formatMoney(line.unitPrice * line.qty)}</span>
+        </div>`;
+        })
+        .join("");
+    }
+
+    function renderSummary() {
+      const cart = getCart();
+      const { subtotal, shipping, total } = cartTotals(cart);
+      document.getElementById("summary-lines").innerHTML = renderLines(cart);
+      document.getElementById("subtotal").textContent = formatMoney(subtotal);
+      document.getElementById("shipping").textContent = shipping === 0 ? "Free" : formatMoney(shipping);
+      document.getElementById("total").textContent = formatMoney(total);
+      placeOrderBtn.textContent = `Place Order — ${formatMoney(total)}`;
+    }
+
+    function makeOrderId() {
+      return `EB-${Date.now().toString(36).toUpperCase()}`;
+    }
+
+    function showConfirmation(order) {
+      document.getElementById("steps").innerHTML = renderSteps(2);
+      document.getElementById("page-title").textContent = "Confirmation";
+      document.getElementById("order-number").textContent = order.orderId;
+      document.getElementById("confirm-name").textContent = order.customer.name.split(" ")[0];
+      document.getElementById("confirm-email").textContent = order.customer.email;
+      document.getElementById("confirm-lines").innerHTML = renderLines(order.items);
+      document.getElementById("confirm-total").textContent = formatMoney(order.totals.total);
+      document.getElementById("confirm-login").hidden = Boolean(order.username);
+      document.getElementById("confirm-account").hidden = !order.username;
+      document.getElementById("checkout-layout").hidden = true;
+      document.getElementById("order-confirmation").hidden = false;
+      window.scrollTo(0, 0);
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      Object.keys(validators).forEach((id) => (touched[id] = true));
+      if (!updateFormState()) return;
+
+      const items = getCart();
+      const totals = cartTotals(items);
+      // Shaped for a future MongoDB "orders" collection and a Square CreatePayment request.
+      const order = {
+        orderId: makeOrderId(),
+        // The account that ordered, or null for guest checkout (the API maps it to userId).
+        username: currentUsername(),
+        customer: {
+          name: fieldValue("full-name"),
+          email: fieldValue("email"),
+          address: fieldValue("address"),
+          city: fieldValue("city"),
+          state: fieldValue("state").toUpperCase(),
+          zip: fieldValue("zip"),
+        },
+        items,
+        totals,
+        amountCents: Math.round(totals.total * 100),
+        status: "pending_payment",
+        createdAt: new Date().toISOString(),
+      };
+
+      saveOrder(order);
+      clearCart();
+      showConfirmation(order);
+    });
+
+    async function init() {
+      try {
+        const products = await getProducts();
+        productsById = Object.fromEntries(products.map((p) => [p.id, p]));
+      } catch (err) {
+        // Thumbnails are extras; checkout still works without product data.
+        console.error(err);
+      }
+      renderSummary();
+    }
+
+    renderSummary();
+    init();
+  </script>
+</body>
+</html>

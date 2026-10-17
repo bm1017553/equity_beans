@@ -1,0 +1,30 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "title": "Equity Beans user",
+    "required": ["username", "passwordHash", "createdAt"],
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "username": {
+        "bsonType": "string",
+        "pattern": "^[A-Za-z0-9_.-]{3,30}$",
+        "description": "Chosen on the sign-up form (login.html). Letters, numbers, dot, dash, underscore; same rule as USERNAME_PATTERN in app.js. Unique ignoring case (case-insensitive unique index), so 'Maria' and 'maria' are one account."
+      },
+      "passwordHash": {
+        "bsonType": "string",
+        "pattern": "^(\\$2[aby]\\$[0-9]{2}\\$|\\$argon2(id|i|d)\\$|pbkdf2-sha256\\$[0-9]+\\$)",
+        "description": "Hash only, never the password itself. Must start with a known hash format: bcrypt ($2b$...), argon2 ($argon2id$...), or pbkdf2-sha256$<iterations>$<salt>$<hash> as written by hashPassword() in app.js. The pattern means a plain-text password is rejected even when put in this field."
+      },
+      "createdAt": {
+        "bsonType": "date",
+        "description": "When the account was made. A real BSON date, not a string."
+      },
+      "lastLoginAt": {
+        "bsonType": ["date", "null"],
+        "description": "Optional. The latest login; sign-up counts as the first, since it logs the customer in. null for an account that has never logged in."
+      }
+    }
+  }
+}

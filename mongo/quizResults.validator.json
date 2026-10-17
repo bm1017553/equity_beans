@@ -1,0 +1,31 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "title": "Equity Beans quiz result",
+    "required": ["productIds", "takenAt"],
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "userId": {
+        "bsonType": ["objectId", "null"],
+        "description": "Reference to users._id, or null when the quiz is taken without logging in."
+      },
+      "productIds": {
+        "bsonType": "array",
+        "minItems": 1,
+        "maxItems": 17,
+        "uniqueItems": true,
+        "description": "The quiz's top matches, best first. Order is meaningful, which is why this is an array and not a set of separate fields. Foreign keys to products.id.",
+        "items": {
+          "bsonType": "string",
+          "pattern": "^[0-9]{4}$"
+        }
+      },
+      "takenAt": {
+        "bsonType": "date",
+        "description": "When the customer finished the quiz. A real BSON date. The browser currently writes an ISO string, so the API must convert it on insert: see SCHEMA.md."
+      }
+    }
+  }
+}

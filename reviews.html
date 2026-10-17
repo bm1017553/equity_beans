@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Reviews</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide">
+    <div class="page-head">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ol id="crumbs">
+          <li><a href="index.html">Shop</a></li>
+          <li aria-current="page">Reviews</li>
+        </ol>
+      </nav>
+      <h1 id="page-title">Customer Reviews</h1>
+    </div>
+
+    <div class="page-with-sidebar side-wide">
+      <aside class="review-side">
+        <section class="card rating-summary" aria-labelledby="summary-title">
+          <h2 id="summary-title" class="visually-hidden">Rating summary</h2>
+          <div class="rating-big">
+            <span class="rating-number" id="avg-number">–</span>
+            <div>
+              <div id="avg-stars"></div>
+              <span class="muted" id="avg-count"></span>
+            </div>
+          </div>
+          <div class="rating-bars" id="rating-bars"></div>
+        </section>
+
+        <section class="action-box review-box" aria-labelledby="write-title">
+          <h2 id="write-title">Write a review</h2>
+          <div id="login-notice" hidden>
+            <p class="muted">Log in to share what you think of a coffee.</p>
+            <a href="login.html" class="btn btn-link btn-block" id="login-link">Log in to review</a>
+            <p class="muted signup-link">New here? <a href="login.html?mode=signup" id="signup-link">Create an account</a></p>
+          </div>
+          <form class="stacked" id="review-form" hidden>
+            <div>
+              <label for="review-product">Coffee</label>
+              <select id="review-product"></select>
+            </div>
+            <div>
+              <span class="field-label" id="rating-label">Rating</span>
+              <div class="star-picker" id="star-picker" role="radiogroup" aria-labelledby="rating-label">
+                <button type="button" class="star-btn" data-value="1" aria-label="1 star">★</button>
+                <button type="button" class="star-btn" data-value="2" aria-label="2 stars">★</button>
+                <button type="button" class="star-btn" data-value="3" aria-label="3 stars">★</button>
+                <button type="button" class="star-btn" data-value="4" aria-label="4 stars">★</button>
+                <button type="button" class="star-btn" data-value="5" aria-label="5 stars">★</button>
+                <span class="star-caption" id="star-caption"></span>
+              </div>
+              <input type="hidden" id="rating" value="5" />
+            </div>
+            <div>
+              <label for="comment">Your review</label>
+              <textarea id="comment" rows="4" required placeholder="What did you think?"></textarea>
+              <span class="char-count" id="char-count">0 characters</span>
+            </div>
+            <button type="submit" class="btn btn-block">Post review</button>
+            <p class="error-text" id="form-msg"></p>
+          </form>
+        </section>
+      </aside>
+
+      <div>
+        <div class="shop-bar">
+          <div class="shop-status">
+            <span id="review-count"></span>
+            <div class="filter-chips" id="filter-chips"></div>
+          </div>
+
+          <div class="icon-toolbar" role="toolbar" aria-label="Filter and sort reviews">
+            <div class="icon-control">
+              <button type="button" class="icon-btn" data-menu="product" data-tip="Coffee" aria-label="Filter by coffee" aria-haspopup="true" aria-expanded="false" aria-controls="menu-product">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9h12v4.5A5.5 5.5 0 0 1 10.5 19h-1A5.5 5.5 0 0 1 4 13.5z" /><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16" /><path d="M8 3.5v2.5M12 3.5v2.5" /></svg>
+              </button>
+              <div class="icon-menu icon-menu-scroll" id="menu-product" role="menu" aria-label="Coffee" hidden></div>
+            </div>
+            <div class="icon-control">
+              <button type="button" class="icon-btn" data-menu="rating" data-tip="Rating" aria-label="Filter by rating" aria-haspopup="true" aria-expanded="false" aria-controls="menu-rating">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></svg>
+              </button>
+              <div class="icon-menu" id="menu-rating" role="menu" aria-label="Rating" hidden></div>
+            </div>
+            <div class="icon-control">
+              <button type="button" class="icon-btn" data-menu="sort" data-tip="Sort" aria-label="Sort reviews" aria-haspopup="true" aria-expanded="false" aria-controls="menu-sort">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 4v16M3.5 7.5 7 4l3.5 3.5M17 20V4M13.5 16.5 17 20l3.5-3.5" /></svg>
+              </button>
+              <div class="icon-menu" id="menu-sort" role="menu" aria-label="Sort by" hidden></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-list" id="reviews-list"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const RATING_LABELS = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
+
+    const ratingInput = document.getElementById("rating");
+    const starPicker = document.getElementById("star-picker");
+    const starButtons = starPicker.querySelectorAll(".star-btn");
+    const starCaption = document.getElementById("star-caption");
+    const commentInput = document.getElementById("comment");
+    const charCount = document.getElementById("char-count");
+    const reviewProduct = document.getElementById("review-product");
+    const chipsEl = document.getElementById("filter-chips");
+    const barsEl = document.getElementById("rating-bars");
+
+    let productsById = {};
+
+    // Current filter + sort choices; "all" means no filter.
+    const DEFAULTS = { product: "all", rating: "all", sort: "newest" };
+    const state = { ...DEFAULTS };
+
+    const MENUS = {
+      product: [{ value: "all", label: "All coffees" }], // filled in once products load
+      rating: [{ value: "all", label: "All ratings" }, ...[5, 4, 3, 2, 1].map((n) => ({ value: String(n), label: `${n} star${n === 1 ? "" : "s"}` }))],
+      sort: [
+        { value: "newest", label: "Newest" },
+        { value: "oldest", label: "Oldest" },
+        { value: "highest", label: "Highest rated" },
+        { value: "lowest", label: "Lowest rated" },
+      ],
+    };
+
+    const sorters = {
+      newest: (a, b) => b.date.localeCompare(a.date),
+      oldest: (a, b) => a.date.localeCompare(b.date),
+      highest: (a, b) => b.rating - a.rating,
+      lowest: (a, b) => a.rating - b.rating,
+    };
+
+    // ---------- Star rating picker ----------
+
+    function paintStars(value) {
+      starButtons.forEach((btn) => {
+        btn.classList.toggle("on", Number(btn.dataset.value) <= value);
+      });
+      starCaption.textContent = `${value} – ${RATING_LABELS[value]}`;
+    }
+
+    function selectRating(value) {
+      ratingInput.value = value;
+      starButtons.forEach((btn) => {
+        btn.setAttribute("aria-checked", String(Number(btn.dataset.value) === value));
+      });
+      paintStars(value);
+    }
+
+    starButtons.forEach((btn) => {
+      const value = Number(btn.dataset.value);
+      btn.setAttribute("role", "radio");
+      btn.addEventListener("mouseover", () => paintStars(value));
+      btn.addEventListener("click", () => selectRating(value));
+    });
+    starPicker.addEventListener("mouseleave", () => paintStars(Number(ratingInput.value)));
+
+    // ---------- Character counter ----------
+
+    function updateCharCount() {
+      const length = commentInput.value.length;
+      charCount.textContent = `${length} character${length === 1 ? "" : "s"}`;
+    }
+
+    commentInput.addEventListener("input", updateCharCount);
+
+    // ---------- Toolbar + chips (shared helpers in app.js) ----------
+
+    const toolbar = setupIconMenus({
+      root: document.querySelector(".icon-toolbar"),
+      menus: MENUS,
+      state,
+      defaults: DEFAULTS,
+      onChange: onFiltersChanged,
+    });
+
+    setupChipClearing(chipsEl, { state, defaults: DEFAULTS, onChange: onFiltersChanged });
+
+    function onFiltersChanged() {
+      // Keep the review form pointed at the coffee being browsed.
+      if (state.product !== "all") reviewProduct.value = state.product;
+      renderHeading();
+      renderReviews();
+    }
+
+    // ---------- Heading + breadcrumb ----------
+
+    function renderHeading() {
+      const product = productsById[state.product];
+      const crumbs = [`<li><a href="index.html">Shop</a></li>`];
+      if (product) {
+        crumbs.push(`<li><a href="reviews.html">Reviews</a></li>`);
+        crumbs.push(`<li aria-current="page"><a href="product.html?id=${encodeURIComponent(product.id)}">${escapeHtml(product.name)}</a></li>`);
+      } else {
+        crumbs.push(`<li aria-current="page">Reviews</li>`);
+      }
+      document.getElementById("crumbs").innerHTML = crumbs.join("");
+      document.getElementById("page-title").textContent = product ? `Reviews of ${product.name}` : "Customer Reviews";
+
+      const next = product ? `reviews.html?product=${product.id}` : "reviews.html";
+      document.getElementById("login-link").href = `login.html?next=${encodeURIComponent(next)}`;
+      document.getElementById("signup-link").href = `login.html?mode=signup&next=${encodeURIComponent(next)}`;
+    }
+
+    // ---------- Rating summary (big average + clickable bars) ----------
+
+    function renderSummary(reviews) {
+      const avg = averageRating(reviews);
+      document.getElementById("avg-number").textContent = reviews.length ? avg.toFixed(1) : "–";
+      document.getElementById("avg-stars").innerHTML = renderStars(avg);
+      document.getElementById("avg-count").textContent = `${reviews.length} review${reviews.length === 1 ? "" : "s"}`;
+
+      barsEl.innerHTML = [5, 4, 3, 2, 1]
+        .map((n) => {
+          const count = reviews.filter((r) => r.rating === n).length;
+          const pct = reviews.length ? (count / reviews.length) * 100 : 0;
+          const pressed = state.rating === String(n);
+          return `
+        <button type="button" class="rating-bar" data-rating="${n}" aria-pressed="${pressed}" aria-label="Show ${n}-star reviews (${count})">
+          <span class="rating-bar-label">${n} ★</span>
+          <span class="rating-bar-track"><span class="rating-bar-fill" style="width:${pct}%"></span></span>
+          <span class="rating-bar-count">${count}</span>
+        </button>`;
+        })
+        .join("");
+    }
+
+    // Clicking a bar filters to that rating; clicking it again clears the filter.
+    barsEl.addEventListener("click", (e) => {
+      const bar = e.target.closest(".rating-bar");
+      if (!bar) return;
+      state.rating = state.rating === bar.dataset.rating ? "all" : bar.dataset.rating;
+      renderReviews();
+    });
+
+    // ---------- Review list ----------
+
+    async function renderReviews() {
+      const reviews = await getReviews(state.product === "all" ? undefined : state.product);
+      const shown = reviews
+        .filter((r) => state.rating === "all" || r.rating === Number(state.rating))
+        .sort(sorters[state.sort]);
+
+      renderSummary(reviews);
+      document.getElementById("review-count").textContent = `Showing ${shown.length} of ${reviews.length} reviews`;
+      renderFilterChips(chipsEl, { menus: MENUS, state, defaults: DEFAULTS, filters: ["product", "rating"], sortKey: "sort" });
+      toolbar.refreshIndicators();
+
+      const list = document.getElementById("reviews-list");
+      if (shown.length === 0) {
+        list.innerHTML = `<div class="card empty-state">${reviews.length ? "No reviews match this filter." : "No reviews yet. Be the first to write one!"}</div>`;
+        return;
+      }
+      list.innerHTML = shown
+        .map((r) => {
+          const product = productsById[r.productId];
+          return `
+        <article class="card review-card">
+          <a class="review-card-product" href="product.html?id=${encodeURIComponent(r.productId)}">
+            ${renderThumb(product)}
+            <span>${escapeHtml(product ? product.name : "Unknown product")}</span>
+          </a>
+          <div>${renderStars(r.rating)}</div>
+          <p>${escapeHtml(r.comment)}</p>
+          <div class="review-meta">
+            <span class="reviewer"><span class="avatar" aria-hidden="true">${escapeHtml(r.name.charAt(0).toUpperCase())}</span>${escapeHtml(r.name)}</span>
+            <span>${escapeHtml(r.date)}</span>
+          </div>
+        </article>`;
+        })
+        .join("");
+    }
+
+    // ---------- Login gating ----------
+
+    function updateFormAccess() {
+      const session = getSession();
+      const loggedIn = Boolean(session && session.loggedIn);
+      document.getElementById("review-form").hidden = !loggedIn;
+      document.getElementById("login-notice").hidden = loggedIn;
+    }
+
+    window.onSessionChanged = updateFormAccess;
+
+    renderNav("reviews.html");
+    selectRating(5);
+    updateCharCount();
+    updateFormAccess();
+
+    async function init() {
+      const products = await getProducts();
+      productsById = Object.fromEntries(products.map((p) => [p.id, p]));
+      MENUS.product.push(...products.map((p) => ({ value: p.id, label: p.name })));
+      reviewProduct.innerHTML = products.map((p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join("");
+
+      const requested = currentProductId(new URLSearchParams(window.location.search).get("product"));
+      if (productsById[requested]) {
+        state.product = requested;
+        reviewProduct.value = requested;
+      }
+      renderHeading();
+      await renderReviews();
+    }
+
+    init().catch((err) => {
+      document.getElementById("reviews-list").innerHTML =
+        `<p class="error-text">Could not load reviews. Make sure the site is running on a local server.</p>`;
+      console.error(err);
+    });
+
+    document.getElementById("review-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = currentUsername();
+      if (!username) {
+        updateFormAccess();
+        return;
+      }
+      const rating = Number(ratingInput.value);
+      const comment = commentInput.value.trim();
+      const msg = document.getElementById("form-msg");
+      if (!comment) {
+        msg.classList.remove("success");
+        msg.textContent = "Please write a comment before submitting.";
+        return;
+      }
+      addReview({
+        productId: reviewProduct.value,
+        // The account that wrote it (the API maps it to userId); `name` is what's displayed.
+        username,
+        name: username,
+        rating,
+        comment,
+        date: localDateString(),
+      });
+      commentInput.value = "";
+      updateCharCount();
+      selectRating(5);
+      msg.classList.add("success");
+      msg.textContent = "Thanks for your review!";
+      await renderReviews();
+      setTimeout(() => (msg.textContent = ""), 2000);
+    });
+  </script>
+</body>
+</html>

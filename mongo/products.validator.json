@@ -1,0 +1,125 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "title": "Equity Beans product",
+    "required": [
+      "id",
+      "name",
+      "country",
+      "region",
+      "roast",
+      "tastingNotes",
+      "flavors",
+      "description",
+      "image",
+      "imageAlt",
+      "certification",
+      "type",
+      "inStock",
+      "options"
+    ],
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "id": {
+        "bsonType": "string",
+        "pattern": "^[0-9]{4}$",
+        "description": "Four-digit product code used by the website (product.html?id=1001). Stored as a string. Must be unique."
+      },
+      "name": {
+        "bsonType": "string",
+        "minLength": 1,
+        "description": "Display name."
+      },
+      "country": {
+        "bsonType": "string",
+        "minLength": 1
+      },
+      "region": {
+        "enum": ["South American", "Central American", "Asian", "South African", "Central African", "East African"],
+        "description": "Growing region; matches the shop's Origin filter."
+      },
+      "roast": {
+        "enum": ["Light", "Medium", "Dark"],
+        "description": "Matches the shop's Roast filter."
+      },
+      "tastingNotes": {
+        "bsonType": "string",
+        "description": "Shown on cards and the product page."
+      },
+      "flavors": {
+        "bsonType": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "description": "Flavor groups used for recommendations and the quiz.",
+        "items": {
+          "enum": [
+            "chocolate",
+            "caramel",
+            "nutty",
+            "citrus",
+            "berry",
+            "stone-fruit",
+            "orchard-fruit",
+            "dried-fruit",
+            "floral",
+            "tea",
+            "spice",
+            "earthy"
+          ]
+        }
+      },
+      "description": {
+        "bsonType": "string"
+      },
+      "image": {
+        "bsonType": "string",
+        "description": "Image file path."
+      },
+      "imageAlt": {
+        "bsonType": "string",
+        "description": "Alt text for the image."
+      },
+      "certification": {
+        "bsonType": "string"
+      },
+      "type": {
+        "bsonType": "string"
+      },
+      "inStock": {
+        "bsonType": "bool",
+        "description": "false hides the coffee from recommendations and blocks Add to Cart."
+      },
+      "options": {
+        "bsonType": "array",
+        "minItems": 1,
+        "description": "Purchase options (grind + roast) with their own prices.",
+        "items": {
+          "bsonType": "object",
+          "required": ["name", "price", "salePrice", "available"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "enum": ["Ground & Roasted", "Whole Bean & Roasted", "Whole Bean & Unroasted"]
+            },
+            "price": {
+              "bsonType": "number",
+              "minimum": 0,
+              "description": "Regular price in US dollars."
+            },
+            "salePrice": {
+              "bsonType": ["number", "null"],
+              "minimum": 0,
+              "description": "Sale price in US dollars, or null when the option isn't on sale."
+            },
+            "available": {
+              "bsonType": "bool",
+              "description": "false shows the option as sold out."
+            }
+          }
+        }
+      }
+    }
+  }
+}

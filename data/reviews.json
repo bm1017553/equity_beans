@@ -1,0 +1,26 @@
+[
+  {
+    "productId": "1001",
+    "userId": null,
+    "name": "Renee Seneca",
+    "rating": 5,
+    "comment": "Best coffee I've had in a long time -- so smooth! Plus it makes me feel good that I'm not buying into some modern slave trade.",
+    "date": "2026-08-14"
+  },
+  {
+    "productId": "1001",
+    "userId": null,
+    "name": "Sahithi Tirimula",
+    "rating": 5,
+    "comment": "Not bitter at all and yeah, it's a higher price than usual, but I don't mind paying it if I've got the money",
+    "date": "2026-08-22"
+  },
+  {
+    "productId": "1001",
+    "userId": null,
+    "name": "Sean Styles",
+    "rating": 4,
+    "comment": "I was skeptical about this at first. I guess the coffee's pretty good.",
+    "date": "2026-09-01"
+  }
+]

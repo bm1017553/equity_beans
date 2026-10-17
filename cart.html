@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Cart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide">
+    <div class="page-head">
+      <div id="steps"></div>
+      <h1>Your Cart</h1>
+    </div>
+
+    <div class="card empty-state empty-cart" id="cart-empty" hidden>
+      <h2>Your cart is empty</h2>
+      <p class="muted">Find a single-origin coffee you’ll love.</p>
+      <a href="index.html" class="btn btn-link">Shop coffee</a>
+    </div>
+
+    <div class="flow-layout" id="cart-layout">
+      <div class="card cart-lines" id="cart-lines"></div>
+
+      <aside class="action-box order-box" aria-labelledby="order-title">
+        <h2 id="order-title">Order total</h2>
+        <div class="summary-row"><span>Subtotal</span><span id="subtotal"></span></div>
+        <div class="summary-row"><span>Shipping</span><span id="shipping"></span></div>
+        <div class="ship-progress" aria-hidden="true"><div class="ship-progress-bar" id="ship-progress-bar"></div></div>
+        <p class="shipping-note" id="shipping-note"></p>
+        <div class="summary-row summary-total"><span>Total</span><span id="total"></span></div>
+        <button class="btn btn-block" id="checkout-btn" type="button">Checkout</button>
+        <a href="index.html" class="continue-link">Continue shopping</a>
+      </aside>
+    </div>
+  </main>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    renderNav("cart.html");
+    document.getElementById("steps").innerHTML = renderSteps(0);
+
+    const linesEl = document.getElementById("cart-lines");
+    const emptyEl = document.getElementById("cart-empty");
+    const layoutEl = document.getElementById("cart-layout");
+    const checkoutBtn = document.getElementById("checkout-btn");
+
+    let productsById = {};
+
+    function renderTotals() {
+      const { subtotal, shipping, total } = cartTotals();
+      document.getElementById("subtotal").textContent = formatMoney(subtotal);
+      document.getElementById("shipping").textContent = shipping === 0 ? "Free" : formatMoney(shipping);
+      document.getElementById("total").textContent = formatMoney(total);
+
+      // Progress toward free shipping, as a bar that fills toward the total.
+      const progress = Math.min(100, (subtotal / FREE_SHIPPING_MIN) * 100);
+      document.getElementById("ship-progress-bar").style.width = `${progress}%`;
+      const remaining = FREE_SHIPPING_MIN - subtotal;
+      document.getElementById("shipping-note").textContent =
+        remaining > 0 ? `Add ${formatMoney(remaining)} more for free shipping.` : "You qualify for free shipping!";
+
+      const hasErrors = linesEl.querySelectorAll(".qty-error:not(:empty)").length > 0;
+      checkoutBtn.disabled = hasErrors;
+      checkoutBtn.textContent = `Checkout — ${formatMoney(total)}`;
+    }
+
+    function renderCart() {
+      const cart = getCart();
+      const isEmpty = cart.length === 0;
+
+      emptyEl.hidden = !isEmpty;
+      layoutEl.hidden = isEmpty;
+      checkoutBtn.disabled = isEmpty;
+      if (isEmpty) return;
+
+      linesEl.innerHTML = cart
+        .map((line, i) => {
+          const product = productsById[line.productId];
+          const href = `product.html?id=${encodeURIComponent(line.productId)}`;
+          return `
+        <div class="cart-line" data-index="${i}">
+          <a href="${href}" class="cart-line-thumb" tabindex="-1" aria-hidden="true">${renderThumb(product)}</a>
+          <div class="cart-line-info">
+            <a href="${href}" class="cart-line-name">${escapeHtml(line.name)}</a>
+            <div class="product-tags">${renderProductTags(product)}</div>
+            <span class="muted">${escapeHtml(line.option)} · ${formatMoney(line.unitPrice)} each</span>
+          </div>
+          <div class="cart-line-qty">
+            <label for="qty-${i}">Qty</label>
+            <input type="number" id="qty-${i}" class="qty-input" min="1" max="${MAX_QTY}" step="1" value="${line.qty}" />
+            <span class="error-text qty-error"></span>
+          </div>
+          <div class="cart-line-total">${formatMoney(line.unitPrice * line.qty)}</div>
+          <button type="button" class="btn-remove" aria-label="Remove ${escapeHtml(line.name)}, ${escapeHtml(line.option)}">Remove</button>
+        </div>`;
+        })
+        .join("");
+
+      renderTotals();
+    }
+
+    // Event delegation: one listener handles every row's quantity box.
+    linesEl.addEventListener("input", (e) => {
+      if (!e.target.classList.contains("qty-input")) return;
+      const row = e.target.closest(".cart-line");
+      const index = Number(row.dataset.index);
+      const qty = Number(e.target.value);
+      const error = row.querySelector(".qty-error");
+
+      if (!isValidQty(qty)) {
+        error.textContent = `1–${MAX_QTY}`;
+        checkoutBtn.disabled = true;
+        return;
+      }
+
+      error.textContent = "";
+      const cart = updateQty(index, qty);
+      row.querySelector(".cart-line-total").textContent = formatMoney(cart[index].unitPrice * qty);
+      renderTotals();
+    });
+
+    linesEl.addEventListener("click", (e) => {
+      if (!e.target.classList.contains("btn-remove")) return;
+      const index = Number(e.target.closest(".cart-line").dataset.index);
+      const line = getCart()[index];
+      if (confirm(`Remove ${line.name} (${line.option}) from your cart?`)) {
+        removeFromCart(index);
+        renderCart();
+      }
+    });
+
+    checkoutBtn.addEventListener("click", () => {
+      window.location.href = "checkout.html";
+    });
+
+    async function init() {
+      try {
+        const products = await getProducts();
+        productsById = Object.fromEntries(products.map((p) => [p.id, p]));
+      } catch (err) {
+        // Thumbnails and tags are extras; the cart still works without product data.
+        console.error(err);
+      }
+      renderCart();
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,661 @@
+[
+  {
+    "id": "1001",
+    "name": "Aprysa Peruvian Coffee",
+    "country": "Peru",
+    "region": "South American",
+    "roast": "Medium",
+    "tastingNotes": "Cocoa, caramel, citrus",
+    "flavors": [
+      "chocolate",
+      "caramel",
+      "citrus"
+    ],
+    "description": "Aprysa single-origin Fair Trade coffee, grown in the highlands of Peru. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Aprysa Peruvian coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 50,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 45,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 30,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1002",
+    "name": "Huila Colombian Coffee",
+    "country": "Colombia",
+    "region": "South American",
+    "roast": "Medium",
+    "tastingNotes": "Red apple, brown sugar, walnut",
+    "flavors": [
+      "orchard-fruit",
+      "caramel",
+      "nutty"
+    ],
+    "description": "Grown by smallholder cooperatives on the steep Andean slopes of Huila. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Huila Colombian coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 48,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 43,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 28,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1003",
+    "name": "Cerrado Brazilian Coffee",
+    "country": "Brazil",
+    "region": "South American",
+    "roast": "Dark",
+    "tastingNotes": "Dark chocolate, roasted nuts",
+    "flavors": [
+      "chocolate",
+      "nutty"
+    ],
+    "description": "A full-bodied, low-acid coffee from the high plateau of Cerrado Mineiro. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Cerrado Brazilian coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 42,
+        "salePrice": 38,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 38,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 25,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1004",
+    "name": "Antigua Guatemalan Coffee",
+    "country": "Guatemala",
+    "region": "Central American",
+    "roast": "Medium",
+    "tastingNotes": "Milk chocolate, spice, orange",
+    "flavors": [
+      "chocolate",
+      "spice",
+      "citrus"
+    ],
+    "description": "Shade-grown in volcanic soil in the valley surrounding Antigua. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Antigua Guatemalan coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 52,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 47,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 31,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1005",
+    "name": "Tarrazú Costa Rican Coffee",
+    "country": "Costa Rica",
+    "region": "Central American",
+    "roast": "Light",
+    "tastingNotes": "Honey, apricot, bright citrus",
+    "flavors": [
+      "caramel",
+      "stone-fruit",
+      "citrus"
+    ],
+    "description": "A clean, bright cup from high-altitude farms in the Tarrazú region. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Tarrazú Costa Rican coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 55,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 50,
+        "salePrice": 45,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 33,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1006",
+    "name": "Marcala Honduran Coffee",
+    "country": "Honduras",
+    "region": "Central American",
+    "roast": "Dark",
+    "tastingNotes": "Molasses, cedar, cocoa",
+    "flavors": [
+      "caramel",
+      "earthy",
+      "chocolate"
+    ],
+    "description": "Grown by women-led cooperatives in the mountains around Marcala. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Marcala Honduran coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 44,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 40,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 26,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1007",
+    "name": "Mandheling Sumatran Coffee",
+    "country": "Indonesia",
+    "region": "Asian",
+    "roast": "Dark",
+    "tastingNotes": "Earthy, cedar, dark cocoa",
+    "flavors": [
+      "earthy",
+      "chocolate"
+    ],
+    "description": "Wet-hulled in the traditional Sumatran style for a heavy, syrupy body. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Mandheling Sumatran coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 49,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 44,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 29,
+        "salePrice": null,
+        "available": false
+      }
+    ]
+  },
+  {
+    "id": "1008",
+    "name": "Monsooned Malabar Coffee",
+    "country": "India",
+    "region": "Asian",
+    "roast": "Medium",
+    "tastingNotes": "Spice, tobacco, low acidity",
+    "flavors": [
+      "spice",
+      "earthy"
+    ],
+    "description": "Aged in open-sided warehouses during the monsoon season on the Malabar Coast. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Monsooned Malabar coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 46,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 41,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 27,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1009",
+    "name": "Da Lat Vietnamese Arabica",
+    "country": "Vietnam",
+    "region": "Asian",
+    "roast": "Light",
+    "tastingNotes": "Jasmine, stone fruit, honey",
+    "flavors": [
+      "floral",
+      "stone-fruit",
+      "caramel"
+    ],
+    "description": "A delicate arabica from the cool Lang Biang plateau around Da Lat. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Da Lat Vietnamese Arabica coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 40,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 36,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 24,
+        "salePrice": null,
+        "available": false
+      }
+    ]
+  },
+  {
+    "id": "1010",
+    "name": "Mzuzu Malawian Coffee",
+    "country": "Malawi",
+    "region": "South African",
+    "roast": "Light",
+    "tastingNotes": "Black tea, lemon, floral",
+    "flavors": [
+      "tea",
+      "citrus",
+      "floral"
+    ],
+    "description": "Grown by the Mzuzu cooperative on the northern highlands of Malawi. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Mzuzu Malawian coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 51,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 46,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 31,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1011",
+    "name": "Kasama Zambian Coffee",
+    "country": "Zambia",
+    "region": "South African",
+    "roast": "Medium",
+    "tastingNotes": "Blackcurrant, cocoa, cane sugar",
+    "flavors": [
+      "berry",
+      "chocolate",
+      "caramel"
+    ],
+    "description": "A rare, sweet coffee from the northern province of Zambia. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Kasama Zambian coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": false,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 47,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 42,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 28,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1012",
+    "name": "Lake Kivu Rwandan Coffee",
+    "country": "Rwanda",
+    "region": "Central African",
+    "roast": "Light",
+    "tastingNotes": "Red berry, hibiscus, citrus",
+    "flavors": [
+      "berry",
+      "floral",
+      "citrus"
+    ],
+    "description": "Washed at community stations on the hillsides above Lake Kivu. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Lake Kivu Rwandan coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 54,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 49,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 32,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1013",
+    "name": "Kayanza Burundian Coffee",
+    "country": "Burundi",
+    "region": "Central African",
+    "roast": "Medium",
+    "tastingNotes": "Plum, black tea, caramel",
+    "flavors": [
+      "stone-fruit",
+      "tea",
+      "caramel"
+    ],
+    "description": "Hand-sorted by smallholder farmers in the northern Kayanza province. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Kayanza Burundian coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 53,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 48,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 32,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1014",
+    "name": "South Kivu Congolese Coffee",
+    "country": "DR Congo",
+    "region": "Central African",
+    "roast": "Dark",
+    "tastingNotes": "Baker’s chocolate, dried fig",
+    "flavors": [
+      "chocolate",
+      "dried-fruit"
+    ],
+    "description": "Grown by cooperatives rebuilding the coffee trade around Lake Kivu. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "South Kivu Congolese coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 50,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 45,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 30,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1015",
+    "name": "Yirgacheffe Ethiopian Coffee",
+    "country": "Ethiopia",
+    "region": "East African",
+    "roast": "Light",
+    "tastingNotes": "Jasmine, bergamot, peach",
+    "flavors": [
+      "floral",
+      "citrus",
+      "stone-fruit"
+    ],
+    "description": "A washed coffee from the high hills of Yirgacheffe, the region best known for floral coffees. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Yirgacheffe Ethiopian coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 56,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 51,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 34,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1016",
+    "name": "Guji Ethiopian Coffee",
+    "country": "Ethiopia",
+    "region": "East African",
+    "roast": "Light",
+    "tastingNotes": "Jasmine, bergamot, black tea",
+    "flavors": [
+      "floral",
+      "citrus",
+      "tea"
+    ],
+    "description": "Grown at high altitude in the Guji zone of southern Ethiopia, once part of Sidamo. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Guji Ethiopian coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 54,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 49,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 33,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "1017",
+    "name": "Nyeri Kenyan Coffee",
+    "country": "Kenya",
+    "region": "East African",
+    "roast": "Medium",
+    "tastingNotes": "Blackcurrant, grapefruit, floral",
+    "flavors": [
+      "berry",
+      "citrus",
+      "floral"
+    ],
+    "description": "Grown on the volcanic slopes of Mount Kenya in Nyeri County. Available roasted or unroasted, and as whole bean or ground. Price shown is for 1 lb.",
+    "image": "coffee-beans.jpg",
+    "imageAlt": "Nyeri Kenyan coffee beans",
+    "certification": "Fair Trade",
+    "type": "Single-origin",
+    "inStock": true,
+    "options": [
+      {
+        "name": "Ground & Roasted",
+        "price": 57,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Roasted",
+        "price": 52,
+        "salePrice": null,
+        "available": true
+      },
+      {
+        "name": "Whole Bean & Unroasted",
+        "price": 35,
+        "salePrice": null,
+        "available": true
+      }
+    ]
+  }
+]

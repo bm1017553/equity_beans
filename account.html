@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Your Account</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide">
+    <div class="page-head">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="index.html">Shop</a></li>
+          <li aria-current="page">Your account</li>
+        </ol>
+      </nav>
+      <h1>Your account</h1>
+      <p class="muted account-lead" id="account-lead"></p>
+    </div>
+
+    <div class="account-layout">
+      <section class="card account-section" aria-labelledby="orders-title">
+        <h2 id="orders-title">Order history</h2>
+        <div class="account-orders" id="account-orders"></div>
+      </section>
+
+      <div class="account-side">
+        <section class="card account-section" aria-labelledby="quiz-title">
+          <h2 id="quiz-title">Your quiz matches</h2>
+          <div id="account-quiz"></div>
+        </section>
+
+        <section class="card account-section" aria-labelledby="reviews-title">
+          <h2 id="reviews-title">Your reviews</h2>
+          <div class="account-reviews" id="account-reviews"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const username = currentUsername();
+    if (!username) window.location.replace("login.html?next=account.html");
+
+    renderNav("account.html");
+    // Logging out from this page leaves nothing to show.
+    window.onSessionChanged = () => (window.location.href = "index.html");
+
+    const STATUS_LABELS = { pending_payment: "Awaiting payment" };
+
+    function formatDate(iso) {
+      return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    function renderOrders(productsById) {
+      const orders = getOrders(username);
+      const el = document.getElementById("account-orders");
+      if (!orders.length) {
+        el.innerHTML = `<div class="empty-state">No orders yet. <a href="index.html">Shop coffee</a></div>`;
+        return;
+      }
+      el.innerHTML = orders
+        .map(
+          (order) => `
+        <article class="account-order">
+          <div class="account-order-head">
+            <div>
+              <strong>Order ${escapeHtml(order.orderId)}</strong>
+              <span class="muted">Placed ${escapeHtml(formatDate(order.createdAt))}</span>
+            </div>
+            <span class="tag">${escapeHtml(STATUS_LABELS[order.status] || order.status)}</span>
+          </div>
+          <div class="confirm-lines">
+            ${order.items
+              .map(
+                (line) => `
+            <div class="summary-item">
+              ${renderThumb(productsById[currentProductId(line.productId)])}
+              <div class="summary-item-info">
+                <strong>${escapeHtml(line.name)}</strong>
+                <span class="muted">${line.qty} × ${escapeHtml(line.option)}</span>
+              </div>
+              <span>${formatMoney(line.unitPrice * line.qty)}</span>
+            </div>`
+              )
+              .join("")}
+          </div>
+          <div class="summary-row"><span>Shipping</span><span>${order.totals.shipping === 0 ? "Free" : formatMoney(order.totals.shipping)}</span></div>
+          <div class="summary-row summary-total"><span>Total</span><span>${formatMoney(order.totals.total)}</span></div>
+        </article>`
+        )
+        .join("");
+    }
+
+    function renderQuiz(productsById) {
+      const result = getQuizResult();
+      const matches = result ? result.productIds.map((id) => productsById[id]).filter(Boolean) : [];
+      const el = document.getElementById("account-quiz");
+      if (!matches.length) {
+        el.innerHTML = `
+          <a href="quiz.html" class="quiz-callout quiz-callout-compact">
+            <span class="quiz-callout-question">No quiz matches yet.</span>
+            <span class="quiz-callout-link">Take the coffee quiz</span>
+          </a>`;
+        return;
+      }
+      el.innerHTML = `
+        <p class="muted">Taken ${escapeHtml(formatDate(result.takenAt))}, best match first. <a href="quiz.html">Retake the quiz</a></p>
+        <div class="rec-list">${renderRecItems(matches.map((product) => ({ product, shared: [] })))}</div>`;
+    }
+
+    function renderReviews(productsById) {
+      // Reviews this account wrote. Reviews from before accounts have no username, so they
+      // aren't claimed by whoever later signs up with the same name.
+      const reviews = getUserReviews().filter((r) => r.username === username);
+      const el = document.getElementById("account-reviews");
+      if (!reviews.length) {
+        el.innerHTML = `<div class="empty-state">You haven’t reviewed any coffees yet. <a href="reviews.html">Write a review</a></div>`;
+        return;
+      }
+      el.innerHTML = reviews
+        .map((r) => {
+          const product = productsById[r.productId];
+          return `
+        <article class="account-review">
+          <a class="review-card-product" href="product.html?id=${encodeURIComponent(r.productId)}">
+            ${renderThumb(product)}
+            <span>${escapeHtml(product ? product.name : "Unknown product")}</span>
+          </a>
+          <div>${renderStars(r.rating)} <span class="muted">${escapeHtml(r.date)}</span></div>
+          <p>${escapeHtml(r.comment)}</p>
+        </article>`;
+        })
+        .join("");
+    }
+
+    async function init() {
+      document.getElementById("account-lead").textContent = `Logged in as ${username}.`;
+      let productsById = {};
+      try {
+        const products = await getProducts();
+        productsById = Object.fromEntries(products.map((p) => [p.id, p]));
+      } catch (err) {
+        // Thumbnails and quiz matches need product data; orders and reviews still show without it.
+        console.error(err);
+      }
+      renderOrders(productsById);
+      renderQuiz(productsById);
+      renderReviews(productsById);
+    }
+
+    if (username) init();
+  </script>
+</body>
+</html>

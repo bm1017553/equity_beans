@@ -199,21 +199,46 @@ changing them takes the current password.
 database, so nobody can sign themselves up as one: create the account on `login.html`, then in
 `mongosh` run `db.users.updateOne({ username: "admin" }, { $set: { role: "admin" } })`.
 
-Admins get an **Admin** link in the header, to `admin.html`. It has four tabs:
+Admins get an **Admin** link in the header. It opens the **admin app**, an Angular app served at
+`/admin/` (source in `admin-app/`, built into `admin/`; see the README). `admin.html` forwards there,
+so old links still work. It has five tabs:
 
 - **Orders**: every order (guest or account) with its shipping details, and a status menu
   (awaiting payment, paid, shipped, cancelled).
 - **Messages**: every contact-page message, a status menu (new, answered, closed) and a reply link.
 - **Products**: in stock for each coffee, and per purchase option whether it's available and its
   sale price. Regular prices and names are left to the database.
-- **Users**: every account with its role, logins, order count, whether its security questions are
-  set, and its login and "Forgot password?" locks, with an **Unlock** button. Never any hashes.
+- **Users**: a tool for fixing the users collection, below.
+- **Database**: each collection's document count, whether it has validation rules, and its indexes.
+  Read-only.
 
-Customers like `testuser` can open the page's address but see "Only admins can see this page."
-The real check is on the server: every `/api/admin/…` route reads the role from the database on
-each request (`requireAdmin()` in `server.js`), so a customer gets 403, a guest 401, and taking
-away someone's admin role works straight away. The role saved in the session and in the browser
-only decides whether the header shows the link.
+**How the admin app reaches MongoDB.** Through the server, like every other page: the Angular app
+calls `/api/admin/…`, and `server.js` reads and writes MongoDB. A browser can't safely hold database
+credentials, so it never connects to MongoDB itself. Every change still goes through the
+collection's validation rules.
+
+**Fixing the users collection (Users tab).** Each account shows its role, logins, order count, and
+a list of **problems**, worked out by the server (`toAdminUser()` in `server.js`):
+
+| Problem | Found by | Fix |
+| ------- | -------- | --- |
+| Breaks the validation rules | A `$nor` query with the collection's own validator, e.g. a document saved before `role` was required | Fix the other problems; MongoDB refuses other changes to it until then |
+| No role | `role` missing or not `customer`/`admin` | **Change role** |
+| Password can't log in | `passwordHash` isn't a PBKDF2 hash this server can check, e.g. `create-users.js`'s placeholders | **Set temporary password** (or Generate one) |
+| No security questions | `securityQuestions` missing | Only the customer can add them, on their account page |
+| Login or reset locked | `loginLockedUntil` / `resetLockedUntil` in the future | **Unlock** |
+
+The other fixes are **Rename** (unique ignoring case; their reviews follow the new name),
+**Clear security questions**, and **Delete account**, which keeps the account's orders, reviews,
+quiz results and messages as guest records (`userId: null`). Setting a password, renaming or
+deleting ends that account's other logins. An admin can't change their own role or delete their
+own account, so there's always at least one admin. Passwords and answers are never shown.
+
+Customers like `testuser` who open `/admin/` see "Only admins can see this page." The real check is
+on the server: every `/api/admin/…` route reads the role from the database on each request
+(`requireAdmin()` in `server.js`), so a customer gets 403, a guest 401, and taking away someone's
+admin role works straight away. `/api/session` also reads the role from the database, so the
+header's Admin link follows a role change on the next page.
 
 The sample users in `create-users.js` have placeholder hashes, so nobody can log in as them. To try
 the site, use the accounts in `AI_Use_Stmt+Reasoning/Test_Account.docx` or create a new one on
@@ -488,11 +513,17 @@ The pages call the API only through functions in `app.js` (`getProducts()`, `get
 | POST `/api/quiz-results`         | anyone     | `{ productIds }`, best match first                                                       |
 | GET `/api/quiz-results/latest`   | anyone     | The latest run for this account, or for this guest session                               |
 | POST `/api/messages`             | anyone     | `{ name, email, topic, orderId, message }`                                               |
-| GET `/api/admin/orders`, `/messages`, `/users` | admin | Everything in that collection for `admin.html`; users without any hashes |
+| GET `/api/admin/orders`, `/messages`, `/users` | admin | Everything in that collection for the admin app; users with their `problems`, never any hashes |
 | POST `/api/admin/orders/:orderId/status` | admin | `{ status }`: one of the orders validator's statuses |
 | POST `/api/admin/messages/:id/status` | admin | `{ status }`: `new`, `answered` or `closed` (`:id` is the message's `_id`) |
 | POST `/api/admin/products/:id` | admin | `{ inStock, options: [{ name, available, salePrice }] }`; sale price below the regular price, or `null` |
 | POST `/api/admin/users/:username/unlock` | admin | Clears the account's login and reset locks and their counts |
+| POST `/api/admin/users/:username/role` | admin | `{ role }`: `customer` or `admin`; not on your own account |
+| POST `/api/admin/users/:username/rename` | admin | `{ newUsername }`: unique ignoring case; their reviews follow; their other logins end |
+| POST `/api/admin/users/:username/password` | admin | `{ password }`: a temporary password; ends all their logins and clears the login lock |
+| POST `/api/admin/users/:username/clear-questions` | admin | Removes their security questions, so they set new ones |
+| POST `/api/admin/users/:username/delete` | admin | Deletes the account; its orders, reviews, quiz results and messages stay as guest records |
+| GET `/api/admin/database` | admin | Each collection's document count, validation rules and indexes (read-only) |
 
 **Sessions.** Logging in sets an httpOnly, `SameSite=Lax` cookie called `eb.sid`, valid for 30 days.
 Sessions are stored by `connect-mongo` in one more collection, `sessions`, which it creates and
@@ -502,7 +533,7 @@ reset. API writes must be sent as JSON, which an ordinary form on
 another site can't do.
 
 **What's public.** The server serves only the pages, `styles.css`, `app.js`, images and `data/`.
-`server.js`, `package.json`, `.env`, `mongo/` and `node_modules/` return 404.
+`server.js`, `package.json`, `.env`, `mongo/`, `admin-app/` (the Angular source) and `node_modules/` return 404. `admin/` (the built Angular app) is public, but its data comes only from the admin routes.
 
 **Without the server.** Opening a page straight from disk still shows the coffees and seed reviews
 from `data/fallback.js`. Logging in, reviewing, checking out, saving a quiz and sending a message

@@ -1,0 +1,44 @@
+@if (store.loadErrors().database; as error) {
+  <p class="card empty-state">{{ error }}</p>
+} @else if (store.database(); as info) {
+  <div class="admin-toolbar">
+    <span>
+      Database <code>{{ info.database }}</code> · {{ info.collections.length }} collections · {{ totalDocuments() | number }} documents
+    </span>
+    <button type="button" class="link-button" (click)="refresh()">Refresh</button>
+  </div>
+  <p class="muted admin-note">Read-only. Collections with validation rules refuse any document whose fields have the wrong type.</p>
+
+  <div class="admin-db-grid">
+    @for (c of info.collections; track c.name) {
+      <article class="card admin-item">
+        <div class="admin-item-head">
+          <div>
+            <strong><code>{{ c.name }}</code></strong>
+            <span class="muted">{{ c.documents | number }} document{{ c.documents === 1 ? '' : 's' }}</span>
+          </div>
+          @if (c.hasValidator) {
+            <span class="tag order-status-shipped">Validation: {{ c.validationLevel ?? 'on' }}</span>
+          } @else {
+            <span class="tag">No validation rules</span>
+          }
+        </div>
+        <h3 class="admin-db-heading">Indexes</h3>
+        <ul class="admin-db-indexes">
+          @for (i of c.indexes; track i.name) {
+            <li>
+              <code>{{ i.keys.join(', ') }}</code>
+              @if (i.unique) { <span class="tag">unique</span> }
+              @if (i.caseInsensitive) { <span class="tag">ignores case</span> }
+              @if (i.expiresAfterSeconds !== null) {
+                <span class="tag">deletes when expired</span>
+              }
+            </li>
+          }
+        </ul>
+      </article>
+    }
+  </div>
+} @else {
+  <p class="muted">Loading the database overview…</p>
+}

@@ -5,7 +5,9 @@
   "description": "Equity Beans coffee shop: static pages plus an Express API backed by MongoDB.",
   "main": "server.js",
   "scripts": {
-    "start": "node --env-file-if-exists=.env server.js"
+    "start": "node --env-file-if-exists=.env server.js",
+    "setup:admin": "npm --prefix admin-app install",
+    "build:admin": "npm --prefix admin-app run build"
   },
   "engines": {
     "node": ">=22.9.0"

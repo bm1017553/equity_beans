@@ -1,0 +1,70 @@
+@if (store.loadErrors().orders; as error) {
+  <p class="card empty-state">{{ error }}</p>
+} @else if (store.orders(); as orders) {
+  <div class="admin-toolbar">
+    <label for="orders-filter">Show</label>
+    <select id="orders-filter" [ngModel]="filter()" (ngModelChange)="filter.set($event)">
+      <option value="">All</option>
+      @for (s of statuses; track s.value) {
+        <option [value]="s.value">{{ s.label }}</option>
+      }
+    </select>
+    <span class="muted">{{ shown().length }} of {{ orders.length }} orders</span>
+  </div>
+
+  <div class="admin-list">
+    @for (o of shown(); track o.orderId) {
+      <article class="card admin-item">
+        <div class="admin-item-head">
+          <div>
+            <strong>Order {{ o.orderId }}</strong>
+            <span class="muted">
+              Placed {{ o.createdAt | date: 'MMM d, y, h:mm a' }} · Account:
+              @if (o.username) { {{ o.username }} } @else { <span>Guest</span> }
+            </span>
+          </div>
+          <div class="admin-status">
+            <label class="visually-hidden" [for]="'status-' + o.orderId">Status of order {{ o.orderId }}</label>
+            <select #menu [id]="'status-' + o.orderId" (change)="setStatus(o.orderId, menu)" [disabled]="saving() === o.orderId">
+              @for (s of statuses; track s.value) {
+                <option [value]="s.value" [selected]="s.value === o.status">{{ s.label }}</option>
+              }
+            </select>
+            @if (notes.get(o.orderId); as note) {
+              <span class="error-text" [class.success]="note.ok" aria-live="polite">{{ note.text }}</span>
+            }
+          </div>
+        </div>
+        <div class="admin-columns">
+          <div>
+            <h3>Ship to</h3>
+            <p>
+              {{ o.customer.name }}<br />{{ o.customer.address }}<br />{{ o.customer.city }}, {{ o.customer.state }} {{ o.customer.zip }}<br />
+              <a [href]="'mailto:' + o.customer.email">{{ o.customer.email }}</a>
+            </p>
+          </div>
+          <div>
+            <h3>Items</h3>
+            <ul class="admin-lines">
+              @for (line of o.items; track $index) {
+                <li>
+                  <span>{{ line.qty }} × {{ line.name }} <span class="muted">({{ line.option }})</span></span>
+                  <span>{{ line.unitPrice * line.qty | currency: 'USD' }}</span>
+                </li>
+              }
+              <li class="muted">
+                <span>Shipping</span>
+                <span>{{ o.totals.shipping === 0 ? 'Free' : (o.totals.shipping | currency: 'USD') }}</span>
+              </li>
+              <li class="admin-total"><span>Total</span><span>{{ o.totals.total | currency: 'USD' }}</span></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    } @empty {
+      <p class="empty-state">No orders{{ filter() ? ' with this status' : '' }}.</p>
+    }
+  </div>
+} @else {
+  <p class="muted">Loading orders…</p>
+}

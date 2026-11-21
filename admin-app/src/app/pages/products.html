@@ -1,0 +1,61 @@
+@if (store.loadErrors().products; as error) {
+  <p class="card empty-state">{{ error }}</p>
+} @else if (store.products(); as products) {
+  <p class="muted admin-note">Leave a sale price empty for no sale. Regular prices and names are set in the database.</p>
+
+  <div class="admin-list">
+    @for (p of products; track p.id) {
+      @let d = draftFor(p);
+      <form class="card admin-item admin-product" (ngSubmit)="save(p)">
+        <div class="admin-item-head">
+          <div>
+            <strong>{{ p.name }}</strong>
+            <span class="muted">#{{ p.id }} · {{ p.roast }} roast · <a [href]="'/product.html?id=' + p.id">View in shop</a></span>
+          </div>
+          <label class="admin-check">
+            <input type="checkbox" [name]="'inStock-' + p.id" [(ngModel)]="d.inStock" />
+            In stock
+          </label>
+        </div>
+
+        <div class="admin-options">
+          <span class="admin-options-head">Option</span>
+          <span class="admin-options-head">Price</span>
+          <span class="admin-options-head">Sale price</span>
+          <span class="admin-options-head">Available</span>
+          @for (o of d.options; track o.name; let i = $index) {
+            <span>{{ o.name }}</span>
+            <span>{{ o.price | currency: 'USD' }}</span>
+            <span>
+              <input
+                type="number"
+                [name]="'sale-' + p.id + '-' + i"
+                [(ngModel)]="o.salePrice"
+                min="0.01"
+                [max]="o.price"
+                step="0.01"
+                placeholder="None"
+                [attr.aria-label]="'Sale price for ' + o.name"
+              />
+            </span>
+            <span>
+              <input type="checkbox" [name]="'available-' + p.id + '-' + i" [(ngModel)]="o.available" [attr.aria-label]="o.name + ' available'" />
+            </span>
+          }
+        </div>
+
+        <div class="admin-product-actions">
+          <button type="submit" class="btn btn-secondary" [disabled]="!changed(p) || saving() === p.id">Save</button>
+          @if (changed(p)) {
+            <button type="button" class="link-button" (click)="undo(p)">Undo changes</button>
+          }
+          @if (notes.get(p.id); as note) {
+            <span class="error-text" [class.success]="note.ok" aria-live="polite">{{ note.text }}</span>
+          }
+        </div>
+      </form>
+    }
+  </div>
+} @else {
+  <p class="muted">Loading coffees…</p>
+}

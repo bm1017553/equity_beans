@@ -1,0 +1,56 @@
+<a class="skip-link" href="#admin-main">Skip to content</a>
+
+<!-- The site's header (styles.css), with links back to the shop -->
+<header class="site-header">
+  <div class="nav-inner">
+    <a href="/index.html" class="brand">Equity Beans</a>
+    <nav class="main-nav" aria-label="Site">
+      <a href="/shop.html">Back to the shop</a>
+      @if (session.user()?.username; as username) {
+        <div class="nav-user">
+          <a href="/account.html">Welcome, {{ username }}</a>
+          <button type="button" (click)="session.logout()">Log out</button>
+        </div>
+      }
+    </nav>
+  </div>
+</header>
+
+<main class="wide" id="admin-main">
+  <div class="page-head">
+    <h1>Admin</h1>
+    <p class="muted">Orders, messages, coffees and accounts, straight from MongoDB. Changes save as soon as you make them.</p>
+  </div>
+
+  @switch (session.state()) {
+    @case ('loading') {
+      <p class="muted">Checking your login…</p>
+    }
+    @case ('denied') {
+      <p class="card empty-state">Only admins can see this page. <a href="/account.html">Go to your account</a></p>
+    }
+    @case ('error') {
+      <p class="card empty-state">{{ session.error() }}</p>
+    }
+    @case ('admin') {
+      <nav class="admin-tabs" aria-label="Admin sections">
+        @for (tab of tabs; track tab.path) {
+          <a [routerLink]="tab.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+            {{ tab.label }}
+            @if (tab.count()) {
+              <span class="admin-count">{{ tab.count() }} {{ tab.countLabel }}</span>
+            }
+          </a>
+        }
+      </nav>
+      <router-outlet />
+    }
+  }
+</main>
+
+<footer class="site-footer">
+  <div class="admin-footer">
+    <a href="/index.html" class="brand">Equity Beans</a>
+    <span>Admin app built with Angular. The server checks your admin role on every change.</span>
+  </div>
+</footer>

@@ -1,8 +1,8 @@
 # Equity Beans
 
-A Fair Trade coffee shop website. The pages are HTML, CSS and JavaScript; `server.js` is a
-Node.js/Express server that serves them and stores accounts, orders, reviews, quiz results and
-contact messages in MongoDB.
+A Fair Trade coffee shop website. The shop's pages are HTML, CSS and JavaScript; the admin pages
+are an Angular app. `server.js` is a Node.js/Express server that serves both and stores accounts,
+orders, reviews, quiz results and contact messages in MongoDB.
 
 ## What you need
 
@@ -103,6 +103,23 @@ Equity Beans is running at http://localhost:3000
 Open **http://localhost:3000** in a web browser. To stop the server, press **Ctrl+C** in the
 terminal.
 
+## The admin app (Angular)
+
+Logged in as an admin, the header's **Admin** link opens **http://localhost:3000/admin/**. It's an
+Angular app for managing orders, contact messages, coffees and accounts (including fixing problem
+accounts in the users collection), plus a read-only overview of the database.
+
+The app comes **already built** in `admin/`, so `npm start` serves it with nothing else to do. Its
+source is in `admin-app/`. To change it, rebuild it afterwards:
+
+```sh
+npm run setup:admin   # once: installs Angular into admin-app/node_modules
+npm run build:admin   # builds admin-app/ into admin/
+```
+
+Then reload the admin page; the server doesn't need restarting. Building needs Node.js **22.22.3+
+or 24.15+** (Angular 22's requirement), newer than what running the site needs.
+
 ## Test accounts
 
 `AI_Use_Stmt+Reasoning/Test_Account.docx` lists the two test accounts, `admin` and `testuser`. It
@@ -122,7 +139,7 @@ adds only sample users with placeholder passwords, which can't log in. To make t
    ```
 
    In Windows PowerShell, use `--eval "db.users.updateOne({ username: 'admin' }, { `$set: { role: 'admin' } })"`
-   instead. Then log out and back in as `admin`, and the header shows an **Admin** link.
+   instead. Reload any page while logged in as `admin`, and the header shows an **Admin** link.
 
 ## Troubleshooting
 
@@ -141,6 +158,8 @@ adds only sample users with placeholder passwords, which can't log in. To make t
 | ------------------------ | -------------------------------------------------------------------------- |
 | `server.js`              | The Express server: serves the pages and the JSON API under `/api/`        |
 | `*.html`, `styles.css`, `app.js` | The website's pages, styles and shared browser code                 |
+| `admin-app/`             | The Angular admin app's source (components, a service for the API, routing) |
+| `admin/`                 | The built admin app that the server serves at `/admin/` (made by `npm run build:admin`) |
 | `data/`                  | The coffee and seed review data, and an offline copy for pages opened from disk |
 | `mongo/`                 | Database scripts, validation rules (`*.validator.json`) and `SCHEMA.md`     |
 | `.env.example`           | The settings template for `.env`                                           |

@@ -1,0 +1,188 @@
+@if (store.loadErrors().users; as error) {
+  <p class="card empty-state">{{ error }}</p>
+} @else if (store.users(); as users) {
+  <p class="muted admin-note">
+    Fix accounts in the MongoDB users collection. Passwords and security answers are never shown; every change is checked by
+    the server and by the collection’s validation rules.
+  </p>
+
+  <div class="admin-toolbar">
+    <label for="users-filter">Show</label>
+    <select id="users-filter" [ngModel]="filter()" (ngModelChange)="filter.set($event)">
+      @for (f of filters; track f.value) {
+        <option [value]="f.value">{{ f.label }}</option>
+      }
+    </select>
+    <span class="muted">{{ shown().length }} of {{ users.length }} accounts · {{ store.usersWithProblems() }} to fix</span>
+    <button type="button" class="link-button" (click)="refresh()">Refresh</button>
+  </div>
+
+  @if (banner()) {
+    <p class="card admin-banner" role="status">{{ banner() }}</p>
+  }
+
+  <div class="admin-list">
+    @for (u of shown(); track u.username) {
+      <article class="card admin-item" [class.has-problems]="u.problems.length">
+        <div class="admin-item-head">
+          <div>
+            <span>
+              <strong>{{ u.username }}</strong>
+              <span class="tag">{{ u.role ? roleLabels[u.role] : 'No role' }}</span>
+              @if (u.isYou) {
+                <span class="tag tag-you">You</span>
+              }
+            </span>
+            <span class="muted">
+              Joined {{ u.createdAt ? (u.createdAt | date: 'MMM d, y') : 'unknown' }} · Last login
+              {{ u.lastLoginAt ? (u.lastLoginAt | date: 'MMM d, y, h:mm a') : 'never' }}
+            </span>
+          </div>
+        </div>
+
+        <p class="admin-facts">
+          <span>{{ u.orders }} order{{ u.orders === 1 ? '' : 's' }}</span>
+          <span>Security questions: {{ u.hasSecurityQuestions ? 'set' : 'not set' }}</span>
+          <span>
+            Login:
+            @if (u.loginLockedUntil) {
+              <span class="tag tag-stock">Locked until {{ u.loginLockedUntil | date: 'h:mm a' }}</span>
+            } @else if (u.loginFailures) {
+              <span class="tag">{{ u.loginFailures }} wrong password{{ u.loginFailures === 1 ? '' : 's' }}</span>
+            } @else {
+              <span class="muted">OK</span>
+            }
+          </span>
+          <span>
+            Password reset:
+            @if (u.resetLockedUntil) {
+              <span class="tag tag-stock">Locked until {{ u.resetLockedUntil | date: 'h:mm a' }}</span>
+            } @else if (u.resetFailures) {
+              <span class="tag">{{ u.resetFailures }} wrong answer{{ u.resetFailures === 1 ? '' : 's' }}</span>
+            } @else {
+              <span class="muted">OK</span>
+            }
+          </span>
+        </p>
+
+        @if (u.problems.length) {
+          <ul class="admin-problems" [attr.aria-label]="'Problems with ' + u.username">
+            @for (problem of u.problems; track problem.code) {
+              <li>
+                <span>{{ problem.text }}</span>
+                @if (fixPanel(problem)) {
+                  <button type="button" class="link-button" (click)="fix(u, problem)" [disabled]="busy() === u.username">Fix</button>
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        <div class="admin-actions" role="group" [attr.aria-label]="'Change ' + u.username">
+          <button type="button" class="link-button" (click)="openPanel(u, 'role')" [disabled]="u.isYou">Change role</button>
+          <button type="button" class="link-button" (click)="openPanel(u, 'rename')">Rename</button>
+          <button type="button" class="link-button" (click)="openPanel(u, 'password')">Set temporary password</button>
+          @if (u.hasSecurityQuestions) {
+            <button type="button" class="link-button" (click)="openPanel(u, 'questions')">Clear security questions</button>
+          }
+          @if (needsUnlock(u)) {
+            <button type="button" class="link-button" (click)="unlock(u)" [disabled]="busy() === u.username">Unlock</button>
+          }
+          <button type="button" class="link-button danger" (click)="openPanel(u, 'delete')" [disabled]="u.isYou">Delete account</button>
+        </div>
+
+        <!-- The open fix form for this account -->
+        @if (isOpen(u, 'role')) {
+          <form class="admin-panel-form" (ngSubmit)="saveRole(u)">
+            <label [for]="'role-' + u.username">Role for {{ u.username }}</label>
+            <select [id]="'role-' + u.username" name="role" [(ngModel)]="roleChoice">
+              @if (!u.role) {
+                <option value="">Choose a role</option>
+              }
+              @for (r of roles; track r.value) {
+                <option [value]="r.value">{{ r.label }}</option>
+              }
+            </select>
+            <p class="field-hint">Admins can open this page. Every admin change is checked against the role in the database.</p>
+            <div class="admin-form-actions">
+              <button type="submit" class="btn" [disabled]="!roleChoice || roleChoice === u.role || busy() === u.username">Save role</button>
+              <button type="button" class="link-button" (click)="close()">Cancel</button>
+            </div>
+          </form>
+        }
+
+        @if (isOpen(u, 'rename')) {
+          <form class="admin-panel-form" (ngSubmit)="saveRename(u)">
+            <label [for]="'rename-' + u.username">New username</label>
+            <input type="text" [id]="'rename-' + u.username" name="newName" maxlength="30" [(ngModel)]="newName" autocomplete="off" />
+            <p class="field-hint">
+              Their reviews show the new name. They’re logged out and log in again with it{{ u.isYou ? ' (you stay logged in)' : '' }}.
+            </p>
+            @if (renameError()) {
+              <p class="error-text">{{ renameError() }}</p>
+            }
+            <div class="admin-form-actions">
+              <button type="submit" class="btn" [disabled]="!!renameError() || newName.trim() === u.username || busy() === u.username">Rename</button>
+              <button type="button" class="link-button" (click)="close()">Cancel</button>
+            </div>
+          </form>
+        }
+
+        @if (isOpen(u, 'password')) {
+          <form class="admin-panel-form" (ngSubmit)="savePassword(u)">
+            <label [for]="'password-' + u.username">Temporary password for {{ u.username }}</label>
+            <div class="admin-inline">
+              <input type="text" [id]="'password-' + u.username" name="tempPassword" [(ngModel)]="tempPassword" autocomplete="off" spellcheck="false" />
+              <button type="button" class="btn btn-secondary" (click)="generatePassword()">Generate</button>
+            </div>
+            <p class="field-hint">
+              At least 8 characters. It replaces their password and logs them out everywhere; give it to them so they can log in
+              and change it on their account page.
+            </p>
+            @if (tempPassword && passwordError()) {
+              <p class="error-text">{{ passwordError() }}</p>
+            }
+            <div class="admin-form-actions">
+              <button type="submit" class="btn" [disabled]="!!passwordError() || busy() === u.username">Set password</button>
+              <button type="button" class="link-button" (click)="close()">Cancel</button>
+            </div>
+          </form>
+        }
+
+        @if (isOpen(u, 'questions')) {
+          <div class="admin-panel-form" role="group" aria-label="Confirm clearing security questions">
+            <p>
+              Clear {{ u.username }}’s security questions? They won’t be able to use “Forgot password?” until they add new ones on
+              their account page.
+            </p>
+            <div class="admin-form-actions">
+              <button type="button" class="btn" (click)="clearQuestions(u)" [disabled]="busy() === u.username">Clear questions</button>
+              <button type="button" class="link-button" (click)="close()">Cancel</button>
+            </div>
+          </div>
+        }
+
+        @if (isOpen(u, 'delete')) {
+          <div class="admin-panel-form admin-danger" role="group" aria-label="Confirm deleting the account">
+            <p>
+              <strong>Delete {{ u.username }}?</strong> This can’t be undone. Their orders, reviews, quiz results and messages are
+              kept as guest records, and they’re logged out everywhere.
+            </p>
+            <div class="admin-form-actions">
+              <button type="button" class="btn btn-danger" (click)="deleteUser(u)" [disabled]="busy() === u.username">Delete account</button>
+              <button type="button" class="link-button" (click)="close()">Cancel</button>
+            </div>
+          </div>
+        }
+
+        @if (notes.get(u.username); as note) {
+          <p class="error-text" [class.success]="note.ok" aria-live="polite">{{ note.text }}</p>
+        }
+      </article>
+    } @empty {
+      <p class="empty-state">No accounts match this filter.</p>
+    }
+  </div>
+} @else {
+  <p class="muted">Loading accounts…</p>
+}

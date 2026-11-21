@@ -321,8 +321,11 @@ api.use((req, res, next) => {
 
 // ---------- Session + accounts ----------
 
-api.get("/session", (req, res) => {
-  res.json({ username: req.session.username || null, role: req.session.username ? req.session.role || "customer" : null });
+api.get("/session", async (req, res) => {
+  if (!req.session.userId) return res.json({ username: null, role: null });
+  // The role comes from the database, so a role an admin just changed shows on the next page.
+  const user = await db.collection("users").findOne({ _id: currentUserId(req) }, { projection: { role: 1 } });
+  res.json({ username: req.session.username, role: (user && user.role) || "customer" });
 });
 
 api.post("/signup", async (req, res) => {
@@ -710,36 +713,195 @@ admin.post("/products/:id", async (req, res) => {
   res.json({ ...rest, inStock, options });
 });
 
+// ---------- Admin: users (fixing the users collection) ----------
+
+const ROLES = ["customer", "admin"];
+
+// A hash this server can check. bcrypt and argon2 hashes pass the validator but this server only
+// verifies PBKDF2, and create-users.js's sample hashes are placeholders, so neither can log in.
+function isUsableHash(hash) {
+  return typeof hash === "string" && /^pbkdf2-sha256\$\d+\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/.test(hash) && !hash.includes("PLACEHOLDER");
+}
+
+// The _ids of user documents that break the collection's current validation rules. They can
+// exist when a rule was added after the document was saved; MongoDB then refuses updates to them
+// that don't fix the problem.
+async function usersBreakingRules() {
+  const [info] = await db.listCollections({ name: "users" }).toArray();
+  const validator = info && info.options && info.options.validator;
+  if (!validator) return new Set();
+  const docs = await db.collection("users").find({ $nor: [validator] }, { projection: { _id: 1 } }).toArray();
+  return new Set(docs.map((d) => String(d._id)));
+}
+
+// What the Users tab shows for an account, with a list of what needs fixing. Never any hashes.
+function toAdminUser(u, { ordersBy, breaking, selfId }) {
+  const now = new Date();
+  const loginLockedUntil = u.loginLockedUntil > now ? u.loginLockedUntil.toISOString() : null;
+  const resetLockedUntil = u.resetLockedUntil > now ? u.resetLockedUntil.toISOString() : null;
+  const problems = [];
+  if (breaking.has(String(u._id))) {
+    problems.push({ code: "rules", text: "Breaks the collection’s validation rules, so MongoDB refuses other changes until the problems below are fixed." });
+  }
+  if (!ROLES.includes(u.role)) problems.push({ code: "role", text: "Has no role. Choose Customer or Admin." });
+  if (!isUsableHash(u.passwordHash)) problems.push({ code: "password", text: "Its password can’t be used to log in (a placeholder or unsupported hash). Set a temporary password." });
+  if (!u.securityQuestions) problems.push({ code: "questions", text: "No security questions, so “Forgot password?” can’t be used. Only the customer can add them." });
+  if (loginLockedUntil) problems.push({ code: "loginLocked", text: "Login is locked after 10 wrong passwords." });
+  if (resetLockedUntil) problems.push({ code: "resetLocked", text: "Password reset is locked after 5 wrong answers." });
+  return {
+    username: u.username,
+    role: u.role || null,
+    isYou: String(u._id) === selfId,
+    createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : null,
+    lastLoginAt: u.lastLoginAt instanceof Date ? u.lastLoginAt.toISOString() : null,
+    hasSecurityQuestions: Boolean(u.securityQuestions),
+    loginFailures: u.loginFailures || 0,
+    loginLockedUntil,
+    resetFailures: u.resetFailures || 0,
+    resetLockedUntil,
+    orders: ordersBy[String(u._id)] || 0,
+    problems,
+  };
+}
+
+async function adminUserView(req, username) {
+  const users = db.collection("users");
+  const user = await users.findOne({ username }, { collation: CASE_INSENSITIVE });
+  if (!user) throw clientError(404, "That account doesn’t exist any more.");
+  const orders = await db.collection("orders").countDocuments({ userId: user._id });
+  return toAdminUser(user, { ordersBy: { [String(user._id)]: orders }, breaking: await usersBreakingRules(), selfId: req.session.userId });
+}
+
+// The account named in the URL, or 404.
+async function findUserOr404(username) {
+  const user = await db.collection("users").findOne({ username }, { collation: CASE_INSENSITIVE });
+  if (!user) throw clientError(404, "That account doesn’t exist any more.");
+  return user;
+}
+
+function isSelf(req, user) {
+  return String(user._id) === req.session.userId;
+}
+
+// Logs an account out everywhere, except this admin's own browser when it's their account.
+function endSessions(req, user) {
+  return db.collection("sessions").deleteMany({ _id: { $ne: req.sessionID }, session: { $regex: `"userId":"${user._id}"` } });
+}
+
+// An update to a user that MongoDB's rules refuse gets a message saying what to do.
+async function updateUser(user, update) {
+  try {
+    return await db.collection("users").updateOne({ _id: user._id }, update);
+  } catch (err) {
+    if (err.code === 121) {
+      throw clientError(400, "MongoDB refused this change because the account breaks the collection’s rules. Fix the problems listed for it first, starting with its role.");
+    }
+    throw err;
+  }
+}
+
 admin.get("/users", async (req, res) => {
-  const users = await db.collection("users").find().sort({ createdAt: 1 }).toArray();
+  const users = await db.collection("users").find().sort({ createdAt: 1, _id: 1 }).toArray();
   const counts = await db.collection("orders").aggregate([{ $match: { userId: { $ne: null } } }, { $group: { _id: "$userId", n: { $sum: 1 } } }]).toArray();
   const ordersBy = Object.fromEntries(counts.map((c) => [String(c._id), c.n]));
-  const now = new Date();
-  // Never the password or answer hashes.
-  res.json(
-    users.map((u) => ({
-      username: u.username,
-      role: u.role,
-      createdAt: u.createdAt.toISOString(),
-      lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
-      hasSecurityQuestions: Boolean(u.securityQuestions),
-      loginFailures: u.loginFailures || 0,
-      loginLockedUntil: u.loginLockedUntil > now ? u.loginLockedUntil.toISOString() : null,
-      resetFailures: u.resetFailures || 0,
-      resetLockedUntil: u.resetLockedUntil > now ? u.resetLockedUntil.toISOString() : null,
-      orders: ordersBy[String(u._id)] || 0,
-    }))
-  );
+  const breaking = await usersBreakingRules();
+  res.json(users.map((u) => toAdminUser(u, { ordersBy, breaking, selfId: req.session.userId })));
 });
 
 // Clears both lockouts (login and "Forgot password?") and their counts, e.g. after checking
 // with the customer that the failed tries were theirs.
 admin.post("/users/:username/unlock", async (req, res) => {
-  const result = await db
-    .collection("users")
-    .updateOne({ username: req.params.username }, withUpdates(clearLock("login"), clearLock("reset")), { collation: CASE_INSENSITIVE });
-  if (!result.matchedCount) throw clientError(404, "That account doesn’t exist any more.");
-  res.json({ username: req.params.username, loginFailures: 0, loginLockedUntil: null, resetFailures: 0, resetLockedUntil: null });
+  const user = await findUserOr404(req.params.username);
+  await updateUser(user, withUpdates(clearLock("login"), clearLock("reset")));
+  res.json(await adminUserView(req, user.username));
+});
+
+admin.post("/users/:username/role", async (req, res) => {
+  const role = text(req.body.role);
+  if (!ROLES.includes(role)) throw clientError(400, "Choose Customer or Admin.");
+  const user = await findUserOr404(req.params.username);
+  if (isSelf(req, user) && role !== "admin") throw clientError(400, "You can’t remove your own admin role. Ask another admin.");
+  await updateUser(user, { $set: { role } });
+  res.json(await adminUserView(req, user.username));
+});
+
+admin.post("/users/:username/rename", async (req, res) => {
+  const newUsername = text(req.body.newUsername);
+  if (!USERNAME_PATTERN.test(newUsername)) throw clientError(400, "Use 3–30 letters, numbers, dots, dashes or underscores.");
+  const user = await findUserOr404(req.params.username);
+  try {
+    await updateUser(user, { $set: { username: newUsername } });
+  } catch (err) {
+    if (err.code === 11000) throw clientError(409, "That username is already taken.");
+    throw err;
+  }
+  // Reviews show the writer's username, so they follow the new name.
+  await db.collection("reviews").updateMany({ userId: user._id }, { $set: { name: newUsername } });
+  // Sessions keep a copy of the username: this admin's own is updated; anyone else logs in again.
+  if (isSelf(req, user)) req.session.username = newUsername;
+  await endSessions(req, user);
+  res.json(await adminUserView(req, newUsername));
+});
+
+// Sets a password the admin then gives the customer, e.g. when they're locked out and have no
+// security questions. Logs that account out everywhere.
+admin.post("/users/:username/password", async (req, res) => {
+  const password = typeof req.body.password === "string" ? req.body.password : "";
+  if (password.length < MIN_PASSWORD_LENGTH) throw clientError(400, `Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+  const user = await findUserOr404(req.params.username);
+  await updateUser(user, withUpdates({ $set: { passwordHash: await hashPassword(password) } }, clearLock("login")));
+  const { deletedCount } = await endSessions(req, user);
+  res.json({ ...(await adminUserView(req, user.username)), sessionsEnded: deletedCount });
+});
+
+// Removes the questions (e.g. the customer forgot the answers), so they set new ones on their
+// account page. Answers are never shown or set by an admin.
+admin.post("/users/:username/clear-questions", async (req, res) => {
+  const user = await findUserOr404(req.params.username);
+  await updateUser(user, withUpdates({ $unset: { securityQuestions: "" } }, clearLock("reset")));
+  res.json(await adminUserView(req, user.username));
+});
+
+// Deletes the account but keeps its orders, reviews, quiz results and messages as guest records,
+// since they're still the shop's history.
+admin.post("/users/:username/delete", async (req, res) => {
+  const user = await findUserOr404(req.params.username);
+  if (isSelf(req, user)) throw clientError(400, "You can’t delete your own account while logged in to it.");
+  const kept = {};
+  for (const collection of ["orders", "reviews", "quizResults", "messages"]) {
+    kept[collection] = (await db.collection(collection).updateMany({ userId: user._id }, { $set: { userId: null } })).modifiedCount;
+  }
+  await endSessions(req, user);
+  await db.collection("users").deleteOne({ _id: user._id });
+  res.json({ username: user.username, deleted: true, kept });
+});
+
+// ---------- Admin: database overview ----------
+
+// Every collection with its document count, validation rules and indexes. Read-only.
+admin.get("/database", async (req, res) => {
+  const infos = (await db.listCollections().toArray()).filter((c) => c.type === "collection" && !c.name.startsWith("system."));
+  infos.sort((a, b) => a.name.localeCompare(b.name));
+  const collections = await Promise.all(
+    infos.map(async (info) => {
+      const collection = db.collection(info.name);
+      const [documents, indexes] = await Promise.all([collection.countDocuments(), collection.indexes()]);
+      return {
+        name: info.name,
+        documents,
+        hasValidator: Boolean(info.options && info.options.validator),
+        validationLevel: (info.options && info.options.validationLevel) || null,
+        indexes: indexes.map((i) => ({
+          name: i.name,
+          keys: Object.entries(i.key).map(([field, order]) => `${field} ${order === 1 ? "ascending" : order === -1 ? "descending" : order}`),
+          unique: Boolean(i.unique),
+          caseInsensitive: Boolean(i.collation && i.collation.strength === 2),
+          expiresAfterSeconds: i.expireAfterSeconds ?? null,
+        })),
+      };
+    })
+  );
+  res.json({ database: DB_NAME, collections });
 });
 
 api.use((req, res, next) => next(clientError(404, "Not found.")));
@@ -748,11 +910,16 @@ app.use("/api", api);
 
 // ---------- Pages ----------
 
-// Only the site's own files are public; server.js, package.json, .env, mongo/, node_modules/
-// and the coursework folder are not.
-const PUBLIC_FILE = /^\/(?:[a-z-]+\.html|styles\.css|app\.js|[\w-]+\.jpg|data\/[\w-]+\.(?:js|json))$/;
+// Only the site's own files are public; server.js, package.json, .env, mongo/, node_modules/,
+// the Angular source (admin-app/) and the coursework folder are not. admin/ is the built Angular
+// admin app (npm run build:admin); its pages only show data the /api/admin routes allow.
+const PUBLIC_FILE = /^\/(?:[a-z-]+\.html|styles\.css|app\.js|[\w-]+\.jpg|data\/[\w-]+\.(?:js|json)|admin\/(?:index\.html|[\w-]+\.(?:js|css)))$/;
 
-app.use((req, res, next) => (req.path === "/" || PUBLIC_FILE.test(req.path) ? next() : res.status(404).send("Not found")));
+// The Angular app's links are relative to /admin/, so the address needs the trailing slash.
+// (Compares req.path exactly: Express routes ignore a trailing slash, so app.get("/admin") would
+// also catch /admin/ and redirect forever.)
+app.use((req, res, next) => (req.path === "/admin" ? res.redirect(301, "/admin/") : next()));
+app.use((req, res, next) => (req.path === "/" || req.path === "/admin/" || PUBLIC_FILE.test(req.path) ? next() : res.status(404).send("Not found")));
 app.use(express.static(ROOT, { index: "index.html", dotfiles: "deny" }));
 app.use((req, res) => res.status(404).send("Not found"));
 

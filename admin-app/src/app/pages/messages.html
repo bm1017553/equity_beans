@@ -1,0 +1,50 @@
+@if (store.loadErrors().messages; as error) {
+  <p class="card empty-state">{{ error }}</p>
+} @else if (store.messages(); as messages) {
+  <div class="admin-toolbar">
+    <label for="messages-filter">Show</label>
+    <select id="messages-filter" [ngModel]="filter()" (ngModelChange)="filter.set($event)">
+      <option value="">All</option>
+      @for (s of statuses; track s.value) {
+        <option [value]="s.value">{{ s.label }}</option>
+      }
+    </select>
+    <span class="muted">{{ shown().length }} of {{ messages.length }} messages</span>
+  </div>
+
+  <div class="admin-list">
+    @for (m of shown(); track m.id) {
+      <article class="card admin-item" [class.is-new]="m.status === 'new'">
+        <div class="admin-item-head">
+          <div>
+            <strong>
+              {{ topics[m.topic] ?? m.topic }}
+              @if (m.orderId) { · Order {{ m.orderId }} }
+            </strong>
+            <span class="muted">
+              From {{ m.name }} &lt;<a [href]="'mailto:' + m.email">{{ m.email }}</a>&gt; · {{ m.createdAt | date: 'MMM d, y, h:mm a' }} ·
+              Account: @if (m.username) { {{ m.username }} } @else { Guest }
+            </span>
+          </div>
+          <div class="admin-status">
+            <label class="visually-hidden" [for]="'mstatus-' + m.id">Status of this message</label>
+            <select #menu [id]="'mstatus-' + m.id" (change)="setStatus(m.id, menu)" [disabled]="saving() === m.id">
+              @for (s of statuses; track s.value) {
+                <option [value]="s.value" [selected]="s.value === m.status">{{ s.label }}</option>
+              }
+            </select>
+            @if (notes.get(m.id); as note) {
+              <span class="error-text" [class.success]="note.ok" aria-live="polite">{{ note.text }}</span>
+            }
+          </div>
+        </div>
+        <p class="admin-message">{{ m.message }}</p>
+        <a class="admin-reply" [href]="replyLink(m)">Reply by email</a>
+      </article>
+    } @empty {
+      <p class="empty-state">No messages{{ filter() ? ' with this status' : '' }}.</p>
+    }
+  </div>
+} @else {
+  <p class="muted">Loading messages…</p>
+}

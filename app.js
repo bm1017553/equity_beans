@@ -169,30 +169,6 @@ function securityAnswerError(value) {
   return value.trim().replace(/\s+/g, " ").length >= MIN_ANSWER_LENGTH ? "" : `Please write an answer (at least ${MIN_ANSWER_LENGTH} characters).`;
 }
 
-// ---------- Admin (admin.html; the server refuses these to anyone but an admin) ----------
-
-// `kind` is "orders", "messages" or "users". Products come from getProducts().
-function adminList(kind) {
-  return api(`api/admin/${kind}`);
-}
-
-function adminSetOrderStatus(orderId, status) {
-  return api(`api/admin/orders/${encodeURIComponent(orderId)}/status`, { method: "POST", body: { status } });
-}
-
-function adminSetMessageStatus(id, status) {
-  return api(`api/admin/messages/${encodeURIComponent(id)}/status`, { method: "POST", body: { status } });
-}
-
-// `changes` is { inStock, options: [{ name, available, salePrice }] }.
-function adminUpdateProduct(id, changes) {
-  return api(`api/admin/products/${encodeURIComponent(id)}`, { method: "POST", body: changes });
-}
-
-function adminUnlockUser(username) {
-  return api(`api/admin/users/${encodeURIComponent(username)}/unlock`, { method: "POST" });
-}
-
 // Builds the two question dropdowns used on sign-up and the account page. Choosing a question
 // in one dropdown hides it in the other, so the same question can't be picked twice.
 function fillQuestionSelects(selects, questions) {
@@ -740,7 +716,7 @@ function renderNav(activePage) {
   let userSection;
   if (session && session.loggedIn) {
     const adminLink =
-      session.role === "admin" ? `<a href="admin.html" class="${activePage === "admin.html" ? "active" : ""}">Admin</a>` : "";
+      session.role === "admin" ? `<a href="admin/">Admin</a>` : ""; // the Angular admin app (admin-app/)
     userSection = `
       ${adminLink}
       <div class="nav-user">

@@ -1,10 +1,6 @@
 // Creates the "users" collection in the "equity_beans" database, with type validation
 // and a unique index on username.
 //
-// Run from the project folder:
-//   mongosh "<your connection string>" mongo/create-users.js
-// e.g. local:  mongosh "mongodb://localhost:27017" mongo/create-users.js
-//
 // Running it again starts fresh: it drops and recreates the collection.
 //
 // NOTE ON THE SAMPLE DOCUMENTS BELOW: the passwordHash values are not real hashes, just
@@ -37,18 +33,21 @@ const users = [
   {
     username: "rseneca",
     passwordHash: PLACEHOLDER_HASH,
+    role: "customer",
     createdAt: new Date("2026-08-01"),
     lastLoginAt: new Date("2026-09-20"),
   },
   {
     username: "stirimula",
     passwordHash: PLACEHOLDER_HASH,
+    role: "customer",
     createdAt: new Date("2026-08-15"),
     lastLoginAt: null,
   },
   {
     username: "sstyles",
     passwordHash: PLACEHOLDER_HASH,
+    role: "customer",
     createdAt: new Date("2026-09-01"),
     lastLoginAt: null,
   },
@@ -56,6 +55,7 @@ const users = [
     // Signed up on the site: sign-up logs the customer in, so lastLoginAt starts at createdAt.
     username: "Maria.Lopez",
     passwordHash: PLACEHOLDER_PBKDF2,
+    role: "customer",
     createdAt: new Date("2026-10-17T15:04:00Z"),
     lastLoginAt: new Date("2026-10-17T15:04:00Z"),
   },
@@ -130,6 +130,7 @@ try {
   db.users.insertOne({
     username: "rseneca",
     passwordHash: PLACEHOLDER_HASH,
+    role: "customer",
     createdAt: new Date(),
   });
   print("  Unexpected: the document was accepted.");
@@ -142,6 +143,7 @@ try {
   db.users.insertOne({
     username: "RSeneca",
     passwordHash: PLACEHOLDER_HASH,
+    role: "customer",
     createdAt: new Date(),
   });
   print("  Unexpected: the document was accepted.");
@@ -154,6 +156,7 @@ try {
   db.users.insertOne({
     username: "stringdate",
     passwordHash: PLACEHOLDER_HASH,
+    role: "customer",
     createdAt: new Date().toISOString(),
   });
   print("  Unexpected: the document was accepted.");

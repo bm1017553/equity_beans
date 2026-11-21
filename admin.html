@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equity Beans | Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+
+  <main class="wide">
+    <div class="page-head">
+      <h1>Admin</h1>
+      <p class="muted">Orders, messages, coffees and accounts, straight from the database. Changes save as soon as you make them.</p>
+    </div>
+
+    <p class="card empty-state" id="admin-denied" hidden></p>
+
+    <div id="admin-app" hidden>
+      <div class="admin-tabs" role="tablist" aria-label="Admin sections">
+        <button type="button" role="tab" data-tab="orders" id="tab-orders" aria-controls="panel-orders">Orders <span class="admin-count" id="count-orders"></span></button>
+        <button type="button" role="tab" data-tab="messages" id="tab-messages" aria-controls="panel-messages">Messages <span class="admin-count" id="count-messages"></span></button>
+        <button type="button" role="tab" data-tab="products" id="tab-products" aria-controls="panel-products">Products</button>
+        <button type="button" role="tab" data-tab="users" id="tab-users" aria-controls="panel-users">Users <span class="admin-count" id="count-users"></span></button>
+      </div>
+
+      <section class="admin-panel" id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" hidden>
+        <div class="admin-toolbar">
+          <label for="orders-filter">Show</label>
+          <select id="orders-filter"></select>
+          <span class="muted" id="orders-summary"></span>
+        </div>
+        <div class="admin-list" id="orders-list"></div>
+      </section>
+
+      <section class="admin-panel" id="panel-messages" role="tabpanel" aria-labelledby="tab-messages" hidden>
+        <div class="admin-toolbar">
+          <label for="messages-filter">Show</label>
+          <select id="messages-filter"></select>
+          <span class="muted" id="messages-summary"></span>
+        </div>
+        <div class="admin-list" id="messages-list"></div>
+      </section>
+
+      <section class="admin-panel" id="panel-products" role="tabpanel" aria-labelledby="tab-products" hidden>
+        <p class="muted admin-note">Leave a sale price empty for no sale. Prices themselves are set in the database.</p>
+        <div class="admin-list admin-products" id="products-list"></div>
+      </section>
+
+      <section class="admin-panel" id="panel-users" role="tabpanel" aria-labelledby="tab-users" hidden>
+        <p class="muted admin-note">Accounts lock after 10 wrong passwords (login, 15 minutes) or 5 wrong security answers (“Forgot password?”, 1 hour). Unlock clears both. Passwords and security answers are never shown.</p>
+        <div class="admin-list" id="users-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="data/fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if (!currentUsername()) window.location.replace("login.html?next=admin.html");
+    renderNav("admin.html");
+    // Logging out from this page leaves nothing to show.
+    window.onSessionChanged = () => {
+      if (!currentUsername()) window.location.href = "index.html";
+    };
+
+    // Same statuses as the validators (mongo/orders.validator.json, messages.validator.json).
+    const ORDER_STATUSES = ORDER_STATUS_LABELS; // from app.js, shared with the account page
+    const MESSAGE_STATUSES = { new: "New", answered: "Answered", closed: "Closed" };
+    const TOPICS = { order: "Order question", coffee: "Coffee question", account: "Account help", feedback: "Feedback", other: "Other" };
+
+    const data = { orders: [], messages: [], products: [], users: [] };
+
+    function formatDateTime(iso) {
+      return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+
+    function accountLabel(username) {
+      return username ? escapeHtml(username) : `<span class="muted">Guest</span>`;
+    }
+
+    function statusOptions(statuses, current) {
+      return Object.entries(statuses)
+        .map(([value, label]) => `<option value="${value}"${value === current ? " selected" : ""}>${label}</option>`)
+        .join("");
+    }
+
+    function fillFilter(select, statuses) {
+      select.innerHTML = `<option value="">All</option>` + statusOptions(statuses, null);
+    }
+
+    // Shows "Saved" (or the error) next to a control for a moment.
+    function flash(el, message, ok) {
+      el.textContent = message;
+      el.classList.toggle("success", ok);
+      clearTimeout(el.timer);
+      if (ok) el.timer = setTimeout(() => (el.textContent = ""), 2000);
+    }
+
+    // A 401/403 mid-session means the login ended or the admin role was taken away.
+    function handleAccessError(err) {
+      if (err.status === 401) {
+        clearSession();
+        window.location.replace("login.html?next=admin.html");
+        return true;
+      }
+      if (err.status === 403) {
+        showDenied();
+        return true;
+      }
+      return false;
+    }
+
+    function showDenied() {
+      document.getElementById("admin-app").hidden = true;
+      const denied = document.getElementById("admin-denied");
+      denied.innerHTML = `Only admins can see this page. <a href="account.html">Go to your account</a>`;
+      denied.hidden = false;
+    }
+
+    // ---------- Tabs ----------
+
+    const TABS = ["orders", "messages", "products", "users"];
+
+    function showTab(name) {
+      if (!TABS.includes(name)) name = "orders";
+      TABS.forEach((tab) => {
+        document.getElementById(`tab-${tab}`).setAttribute("aria-selected", String(tab === name));
+        document.getElementById(`panel-${tab}`).hidden = tab !== name;
+      });
+      history.replaceState(null, "", `#${name}`);
+    }
+
+    document.querySelector(".admin-tabs").addEventListener("click", (e) => {
+      const tab = e.target.closest("[data-tab]");
+      if (tab) showTab(tab.dataset.tab);
+    });
+    // A link or typed address like admin.html#users switches tabs without a reload.
+    window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
+
+    function updateCounts() {
+      const pending = data.orders.filter((o) => o.status === "pending_payment").length;
+      const unread = data.messages.filter((m) => m.status === "new").length;
+      const locked = data.users.filter((u) => u.loginLockedUntil || u.resetLockedUntil).length;
+      document.getElementById("count-orders").textContent = pending ? `${pending} awaiting payment` : "";
+      document.getElementById("count-messages").textContent = unread ? `${unread} new` : "";
+      document.getElementById("count-users").textContent = locked ? `${locked} locked` : "";
+    }
+
+    // ---------- Orders ----------
+
+    const ordersFilter = document.getElementById("orders-filter");
+    fillFilter(ordersFilter, ORDER_STATUSES);
+    ordersFilter.addEventListener("change", renderOrders);
+
+    function renderOrders() {
+      const shown = data.orders.filter((o) => !ordersFilter.value || o.status === ordersFilter.value);
+      document.getElementById("orders-summary").textContent = `${shown.length} of ${data.orders.length} orders`;
+      document.getElementById("orders-list").innerHTML = shown.length
+        ? shown
+            .map(
+              (o) => `
+          <article class="card admin-item">
+            <div class="admin-item-head">
+              <div>
+                <strong>Order ${escapeHtml(o.orderId)}</strong>
+                <span class="muted">Placed ${escapeHtml(formatDateTime(o.createdAt))} · Account: ${accountLabel(o.username)}</span>
+              </div>
+              <div class="admin-status">
+                <label class="visually-hidden" for="status-${escapeHtml(o.orderId)}">Status of order ${escapeHtml(o.orderId)}</label>
+                <select id="status-${escapeHtml(o.orderId)}" data-order="${escapeHtml(o.orderId)}">${statusOptions(ORDER_STATUSES, o.status)}</select>
+                <span class="error-text admin-saved" aria-live="polite"></span>
+              </div>
+            </div>
+            <div class="admin-columns">
+              <div>
+                <h3>Ship to</h3>
+                <p>${escapeHtml(o.customer.name)}<br />${escapeHtml(o.customer.address)}<br />${escapeHtml(o.customer.city)}, ${escapeHtml(o.customer.state)} ${escapeHtml(o.customer.zip)}<br /><a href="mailto:${escapeHtml(o.customer.email)}">${escapeHtml(o.customer.email)}</a></p>
+              </div>
+              <div>
+                <h3>Items</h3>
+                <ul class="admin-lines">
+                  ${o.items.map((line) => `<li><span>${line.qty} × ${escapeHtml(line.name)} <span class="muted">(${escapeHtml(line.option)})</span></span><span>${formatMoney(line.unitPrice * line.qty)}</span></li>`).join("")}
+                  <li class="muted"><span>Shipping</span><span>${o.totals.shipping === 0 ? "Free" : formatMoney(o.totals.shipping)}</span></li>
+                  <li class="admin-total"><span>Total</span><span>${formatMoney(o.totals.total)}</span></li>
+                </ul>
+              </div>
+            </div>
+          </article>`
+            )
+            .join("")
+        : `<p class="empty-state">No orders${ordersFilter.value ? " with this status" : ""}.</p>`;
+    }
+
+    document.getElementById("orders-list").addEventListener("change", async (e) => {
+      const select = e.target.closest("select[data-order]");
+      if (!select) return;
+      const order = data.orders.find((o) => o.orderId === select.dataset.order);
+      const note = select.parentElement.querySelector(".admin-saved");
+      select.disabled = true;
+      try {
+        await adminSetOrderStatus(order.orderId, select.value);
+        order.status = select.value;
+        flash(note, "Saved", true);
+        updateCounts();
+      } catch (err) {
+        if (handleAccessError(err)) return;
+        select.value = order.status;
+        flash(note, err.message, false);
+      } finally {
+        select.disabled = false;
+      }
+    });
+
+    // ---------- Messages ----------
+
+    const messagesFilter = document.getElementById("messages-filter");
+    fillFilter(messagesFilter, MESSAGE_STATUSES);
+    messagesFilter.addEventListener("change", renderMessages);
+
+    function renderMessages() {
+      const shown = data.messages.filter((m) => !messagesFilter.value || m.status === messagesFilter.value);
+      document.getElementById("messages-summary").textContent = `${shown.length} of ${data.messages.length} messages`;
+      document.getElementById("messages-list").innerHTML = shown.length
+        ? shown
+            .map(
+              (m) => `
+          <article class="card admin-item${m.status === "new" ? " is-new" : ""}">
+            <div class="admin-item-head">
+              <div>
+                <strong>${escapeHtml(TOPICS[m.topic] || m.topic)}${m.orderId ? ` · Order ${escapeHtml(m.orderId)}` : ""}</strong>
+                <span class="muted">From ${escapeHtml(m.name)} &lt;<a href="mailto:${escapeHtml(m.email)}">${escapeHtml(m.email)}</a>&gt; · ${escapeHtml(formatDateTime(m.createdAt))} · Account: ${accountLabel(m.username)}</span>
+              </div>
+              <div class="admin-status">
+                <label class="visually-hidden" for="mstatus-${escapeHtml(m.id)}">Status of this message</label>
+                <select id="mstatus-${escapeHtml(m.id)}" data-message="${escapeHtml(m.id)}">${statusOptions(MESSAGE_STATUSES, m.status)}</select>
+                <span class="error-text admin-saved" aria-live="polite"></span>
+              </div>
+            </div>
+            <p class="admin-message">${escapeHtml(m.message)}</p>
+            <a class="admin-reply" href="mailto:${escapeHtml(m.email)}?subject=${encodeURIComponent(`Re: your Equity Beans ${(TOPICS[m.topic] || "message").toLowerCase()}`)}">Reply by email</a>
+          </article>`
+            )
+            .join("")
+        : `<p class="empty-state">No messages${messagesFilter.value ? " with this status" : ""}.</p>`;
+    }
+
+    document.getElementById("messages-list").addEventListener("change", async (e) => {
+      const select = e.target.closest("select[data-message]");
+      if (!select) return;
+      const message = data.messages.find((m) => m.id === select.dataset.message);
+      const note = select.parentElement.querySelector(".admin-saved");
+      select.disabled = true;
+      try {
+        await adminSetMessageStatus(message.id, select.value);
+        message.status = select.value;
+        select.closest(".admin-item").classList.toggle("is-new", message.status === "new");
+        flash(note, "Saved", true);
+        updateCounts();
+      } catch (err) {
+        if (handleAccessError(err)) return;
+        select.value = message.status;
+        flash(note, err.message, false);
+      } finally {
+        select.disabled = false;
+      }
+    });
+
+    // ---------- Products ----------
+
+    function renderProducts() {
+      document.getElementById("products-list").innerHTML = data.products
+        .map(
+          (p) => `
+        <form class="card admin-item admin-product" data-product="${escapeHtml(p.id)}" novalidate>
+          <div class="admin-item-head">
+            <div>
+              <strong>${escapeHtml(p.name)}</strong>
+              <span class="muted">#${escapeHtml(p.id)} · <a href="product.html?id=${encodeURIComponent(p.id)}">View in shop</a></span>
+            </div>
+            <label class="admin-check"><input type="checkbox" name="inStock"${p.inStock ? " checked" : ""} /> In stock</label>
+          </div>
+          <div class="admin-options">
+            <span class="admin-options-head">Option</span><span class="admin-options-head">Price</span><span class="admin-options-head">Sale price</span><span class="admin-options-head">Available</span>
+            ${p.options
+              .map(
+                (o, i) => `
+              <span>${escapeHtml(o.name)}</span>
+              <span>${formatMoney(o.price)}</span>
+              <span><input type="number" name="sale-${i}" min="0.01" max="${o.price}" step="0.01" placeholder="None" value="${o.salePrice ?? ""}" aria-label="Sale price for ${escapeHtml(o.name)}" /></span>
+              <span><input type="checkbox" name="available-${i}"${o.available ? " checked" : ""} aria-label="${escapeHtml(o.name)} available" /></span>`
+              )
+              .join("")}
+          </div>
+          <div class="admin-product-actions">
+            <button type="submit" class="btn btn-secondary">Save</button>
+            <span class="error-text admin-saved" aria-live="polite"></span>
+          </div>
+        </form>`
+        )
+        .join("");
+    }
+
+    document.getElementById("products-list").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const product = data.products.find((p) => p.id === form.dataset.product);
+      const note = form.querySelector(".admin-saved");
+      const changes = {
+        inStock: form.elements.inStock.checked,
+        options: product.options.map((o, i) => {
+          const sale = form.elements[`sale-${i}`].value.trim();
+          return { name: o.name, available: form.elements[`available-${i}`].checked, salePrice: sale === "" ? null : Number(sale) };
+        }),
+      };
+      const button = form.querySelector("button");
+      button.disabled = true;
+      try {
+        Object.assign(product, await adminUpdateProduct(product.id, changes));
+        flash(note, "Saved", true);
+      } catch (err) {
+        if (handleAccessError(err)) return;
+        flash(note, err.message, false);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    // ---------- Users ----------
+
+    const time = (iso) => escapeHtml(new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }));
+    const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+    // One label per kind of lock: login (wrong passwords) and reset (wrong security answers).
+    function lockLabel(lockedUntil, failures, word) {
+      if (lockedUntil) return `<span class="tag tag-stock">Locked until ${time(lockedUntil)}</span>`;
+      if (failures) return `<span class="tag">${plural(failures, word)}</span>`;
+      return `<span class="muted">Not locked</span>`;
+    }
+
+    const needsUnlock = (u) => u.loginLockedUntil || u.loginFailures || u.resetLockedUntil || u.resetFailures;
+
+    function renderUsers() {
+      document.getElementById("users-list").innerHTML = data.users
+        .map(
+          (u) => `
+        <article class="card admin-item">
+          <div class="admin-item-head">
+            <div>
+              <span><strong>${escapeHtml(u.username)}</strong> <span class="tag">${u.role === "admin" ? "Administrator" : "Customer"}</span></span>
+              <span class="muted">Joined ${escapeHtml(formatDateTime(u.createdAt))} · Last login ${u.lastLoginAt ? escapeHtml(formatDateTime(u.lastLoginAt)) : "never"}</span>
+            </div>
+            <div class="admin-status">
+              ${needsUnlock(u) ? `<button type="button" class="btn btn-secondary" data-unlock="${escapeHtml(u.username)}">Unlock</button>` : ""}
+              <span class="error-text admin-saved" aria-live="polite"></span>
+            </div>
+          </div>
+          <p class="admin-facts">
+            <span>${u.orders} order${u.orders === 1 ? "" : "s"}</span>
+            <span>Security questions: ${u.hasSecurityQuestions ? "set" : `<strong>not set</strong>`}</span>
+            <span>Login: ${lockLabel(u.loginLockedUntil, u.loginFailures, "wrong password")}</span>
+            <span>Password reset: ${lockLabel(u.resetLockedUntil, u.resetFailures, "wrong answer")}</span>
+          </p>
+        </article>`
+        )
+        .join("");
+    }
+
+    document.getElementById("users-list").addEventListener("click", async (e) => {
+      const button = e.target.closest("[data-unlock]");
+      if (!button) return;
+      const user = data.users.find((u) => u.username === button.dataset.unlock);
+      button.disabled = true;
+      try {
+        Object.assign(user, await adminUnlockUser(user.username));
+        renderUsers();
+        updateCounts();
+      } catch (err) {
+        if (handleAccessError(err)) return;
+        button.disabled = false;
+        flash(button.parentElement.querySelector(".admin-saved"), err.message, false);
+      }
+    });
+
+    // ---------- Start ----------
+
+    async function init() {
+      try {
+        [data.orders, data.messages, data.users, data.products] = await Promise.all([
+          adminList("orders"),
+          adminList("messages"),
+          adminList("users"),
+          getProducts(),
+        ]);
+      } catch (err) {
+        if (handleAccessError(err)) return;
+        const denied = document.getElementById("admin-denied");
+        denied.textContent = err.message;
+        denied.hidden = false;
+        return;
+      }
+      document.getElementById("admin-app").hidden = false;
+      renderOrders();
+      renderMessages();
+      renderProducts();
+      renderUsers();
+      updateCounts();
+      showTab(location.hash.slice(1));
+    }
+
+    if (currentUsername()) init();
+  </script>
+</body>
+</html>

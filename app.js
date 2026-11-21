@@ -1,173 +1,225 @@
 const SESSION_KEY = "aurora_session";
-const REVIEWS_KEY = "aurora_reviews";
 const CART_KEY = "equity_cart";
-const ORDERS_KEY = "equity_orders";
 
 const MAX_QTY = 10;
 const SHIPPING_FEE = 5.0;
 const FREE_SHIPPING_MIN = 100.0;
 
+// ---------- Server API ----------
+
+// Accounts, reviews, orders, quiz results and messages live in MongoDB behind server.js.
+// Without it (a page opened from disk, or another static server) only reading products and
+// reviews works, from data/fallback.js.
+const SERVER_NEEDED = "This needs the Equity Beans server. Start it with npm start, then open http://localhost:3000.";
+
+// Calls the API and returns its JSON. Throws an Error whose message suits the page: the
+// server's own message for a rejected request, or SERVER_NEEDED when there's no server.
+async function api(path, { method = "GET", body } = {}) {
+  const sendsJson = method !== "GET";
+  let res;
+  try {
+    res = await fetch(path, {
+      method,
+      credentials: "same-origin",
+      headers: sendsJson ? { "Content-Type": "application/json" } : {},
+      body: sendsJson ? JSON.stringify(body ?? {}) : undefined,
+    });
+  } catch {
+    throw new Error(SERVER_NEEDED);
+  }
+  const data = await res.json().catch(() => undefined);
+  if (!res.ok || data === undefined) {
+    throw Object.assign(new Error((data && data.error) || SERVER_NEEDED), { status: res.status });
+  }
+  return data;
+}
+
+// Before the server, accounts, reviews, orders, quiz runs and messages were kept in this
+// browser. They're in MongoDB now, so the old copies are removed.
+try {
+  ["equity_users", "aurora_reviews", "equity_orders", "equity_quiz", "equity_messages"].forEach((key) => localStorage.removeItem(key));
+  sessionStorage.removeItem("equity_guest_items");
+} catch {}
+
 // ---------- Session ----------
 
+// The server decides who is logged in, with an httpOnly cookie. This browser keeps only a copy
+// of the username so the header can draw straight away; renderNav() checks it with the server.
 function getSession() {
-  let session;
   try {
-    session = JSON.parse(localStorage.getItem(SESSION_KEY));
+    const session = JSON.parse(localStorage.getItem(SESSION_KEY));
+    return session && session.loggedIn ? session : null;
   } catch {
     return null;
   }
-  // A session from the old any-password demo login has no account behind it, so it no longer
-  // counts as logged in.
-  if (session && session.loggedIn && !findUser(session.username)) {
-    clearSession();
-    return null;
-  }
-  return session;
 }
 
-function setSession(username) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ loggedIn: true, username }));
+// `role` only decides whether the header shows the Admin link; the server checks the real role
+// on every admin request.
+function setSession(username, role = "customer") {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ loggedIn: true, username, role }));
+  } catch {}
 }
 
 function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {}
+}
+
+// The logged-in username, or null for a guest.
+function currentUsername() {
+  const session = getSession();
+  return session ? session.username : null;
+}
+
+// Asks the server who is logged in. When that differs from the copy the page drew with, the
+// header redraws and the page's onSessionChanged() runs. No server counts as logged out.
+async function refreshSession(activePage) {
+  let username = null;
+  let role = null;
+  try {
+    ({ username, role } = await api("api/session"));
+  } catch {}
+  const cached = getSession();
+  if (username === currentUsername() && (!username || role === cached.role)) return;
+  username ? setSession(username, role) : clearSession();
+  renderNav(activePage);
+  if (typeof window.onSessionChanged === "function") window.onSessionChanged();
 }
 
 // ---------- Accounts ----------
 
-// Until there's a server, accounts live in this browser with the same fields as the users
-// collection: { username, passwordHash, createdAt, lastLoginAt }. Passwords are kept only as a
-// salted PBKDF2 hash. That keeps them out of plain sight, but it isn't real security: anyone
-// using this browser can read the stored hashes. See mongo/SCHEMA.md.
-const USERS_KEY = "equity_users";
-const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,30}$/; // same rule as mongo/users.validator.json
+// Same rules as server.js and mongo/users.validator.json, so the forms can check as you type.
+const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,30}$/;
 const MIN_PASSWORD_LENGTH = 8;
-const PBKDF2_ITERATIONS = 600000; // OWASP's recommendation for PBKDF2-SHA256
 
-function getUsers() {
-  const users = readJson(USERS_KEY, []);
-  return Array.isArray(users) ? users : [];
+// What customers and the admin page call each order status (the orders validator's enum).
+const ORDER_STATUS_LABELS = {
+  pending_payment: "Awaiting payment",
+  paid: "Paid",
+  shipped: "Shipped",
+  cancelled: "Cancelled",
+};
+
+// Both return { username, claimed: { quizzes, orders } }: logging in moves the quiz runs and
+// orders made as a guest during this visit to the account. Both throw an Error whose message
+// suits the form ("That username is already taken.", "Username or password is incorrect.").
+// `securityQuestions` is [{ questionId, answer }, { questionId, answer }].
+async function createAccount(username, password, securityQuestions) {
+  const result = await api("api/signup", { method: "POST", body: { username, password, securityQuestions } });
+  setSession(result.username, result.role);
+  return result;
 }
 
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-// Usernames are unique ignoring case ("Maria" and "maria" are one account), like the
-// collection's case-insensitive index.
-function findUser(username) {
-  const key = String(username).toLowerCase();
-  return getUsers().find((u) => u.username.toLowerCase() === key) || null;
-}
-
-function toBase64(buffer) {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
-}
-
-function fromBase64(text) {
-  return Uint8Array.from(atob(text), (ch) => ch.charCodeAt(0));
-}
-
-async function pbkdf2(password, salt, iterations) {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  return crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations }, key, 256);
-}
-
-// "pbkdf2-sha256$<iterations>$<salt>$<hash>": the algorithm and cost are stored with the hash,
-// so a server can still check it later and upgrade it to a stronger scheme on next login.
-async function hashPassword(password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hash = await pbkdf2(password, salt, PBKDF2_ITERATIONS);
-  return `pbkdf2-sha256$${PBKDF2_ITERATIONS}$${toBase64(salt)}$${toBase64(hash)}`;
-}
-
-async function verifyPassword(password, passwordHash) {
-  const [scheme, iterations, salt, expected] = passwordHash.split("$");
-  if (scheme !== "pbkdf2-sha256") return false;
-  return toBase64(await pbkdf2(password, fromBase64(salt), Number(iterations))) === expected;
-}
-
-// Creates an account and returns its username. Throws an Error whose message suits the form.
-async function createAccount(username, password) {
-  if (!USERNAME_PATTERN.test(username)) throw new Error("Use 3–30 letters, numbers, dots, dashes or underscores.");
-  if (password.length < MIN_PASSWORD_LENGTH) throw new Error(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
-  if (findUser(username)) throw new Error("That username is already taken.");
-  const now = new Date().toISOString();
-  // Signing up logs the new customer straight in, so it counts as their first login.
-  const user = { username, passwordHash: await hashPassword(password), createdAt: now, lastLoginAt: now };
-  saveUsers([...getUsers(), user]);
-  return user.username;
-}
-
-// Checks a login. Returns the username as it was registered, or null if the username or
-// password is wrong (the form doesn't say which).
 async function logIn(username, password) {
-  const user = findUser(username);
-  if (!user || !(await verifyPassword(password, user.passwordHash))) return null;
-  const now = new Date().toISOString();
-  saveUsers(getUsers().map((u) => (u.username === user.username ? { ...u, lastLoginAt: now } : u)));
-  return user.username;
+  const result = await api("api/login", { method: "POST", body: { username, password } });
+  setSession(result.username, result.role);
+  return result;
 }
 
-// The logged-in username, or null for a guest. Orders and quiz runs are saved under it.
-function currentUsername() {
-  const session = getSession();
-  return session && session.loggedIn ? session.username : null;
-}
-
-// Quiz runs and orders made while logged out during this visit. sessionStorage ends with the
-// tab, so logging in saves this visit's guest activity to the account without ever claiming
-// an earlier visitor's orders on a shared computer.
-const GUEST_ITEMS_KEY = "equity_guest_items";
-
-function rememberGuestItem(kind, id) {
-  if (currentUsername()) return;
+async function logOut() {
   try {
-    const items = JSON.parse(sessionStorage.getItem(GUEST_ITEMS_KEY)) || [];
-    items.push({ kind, id });
-    sessionStorage.setItem(GUEST_ITEMS_KEY, JSON.stringify(items));
-  } catch {}
-}
-
-// Moves this visit's guest quiz runs and orders to `username`; returns how many of each moved.
-function claimGuestItems(username) {
-  let items = [];
-  try {
-    items = JSON.parse(sessionStorage.getItem(GUEST_ITEMS_KEY)) || [];
-    sessionStorage.removeItem(GUEST_ITEMS_KEY);
-  } catch {}
-  const ids = (kind) => items.filter((item) => item.kind === kind).map((item) => item.id);
-  const quizIds = ids("quiz");
-  const orderIds = ids("order");
-  const claimed = { quizzes: 0, orders: 0 };
-
-  const results = getQuizResults().map((r) => {
-    if (r.username !== null || !quizIds.includes(r.takenAt)) return r;
-    claimed.quizzes++;
-    return { ...r, username };
-  });
-  const orders = readJson(ORDERS_KEY, []).map((o) => {
-    if ((o.username ?? null) !== null || !orderIds.includes(o.orderId)) return o;
-    claimed.orders++;
-    return { ...o, username };
-  });
-  try {
-    localStorage.setItem(QUIZ_KEY, JSON.stringify(results));
-    localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-  } catch {}
-  return claimed;
-}
-
-// ---------- Data files (future MongoDB collections) ----------
-
-async function loadJson(path) {
-  try {
-    const res = await fetch(path);
-    if (!res.ok) throw new Error(`Could not load ${path} (${res.status})`);
-    return await res.json();
+    await api("api/logout", { method: "POST" });
   } catch (err) {
-    // Opened from disk (file://), fetch() is blocked; use the copy in data/fallback.js.
-    const fallback = window.EQUITY_FALLBACK_DATA && window.EQUITY_FALLBACK_DATA[path];
+    console.error(err);
+  }
+  clearSession();
+}
+
+// { username, securityQuestions }: the wording of the account's two questions, or null for
+// accounts made before sign-up asked for them.
+function getAccount() {
+  return api("api/me");
+}
+
+// [{ id, question }]: the questions to choose from.
+function getSecurityQuestionList() {
+  return api("api/security-questions");
+}
+
+// Other devices are logged out; this one stays logged in.
+function changePassword(currentPassword, newPassword) {
+  return api("api/me/password", { method: "POST", body: { currentPassword, newPassword } });
+}
+
+// Changing the questions takes the current password.
+function updateSecurityQuestions(securityQuestions, password) {
+  return api("api/me/security-questions", { method: "POST", body: { securityQuestions, password } });
+}
+
+// The two questions to answer for `username`. Unknown usernames get questions too, so the
+// form doesn't reveal which accounts exist.
+async function getResetQuestions(username) {
+  return (await api("api/password/questions", { method: "POST", body: { username } })).questions;
+}
+
+// Checks both answers, sets the new password and logs in, like logIn().
+async function resetPassword(username, answers, password) {
+  const result = await api("api/password/reset", { method: "POST", body: { username, answers, password } });
+  setSession(result.username, result.role);
+  return result;
+}
+
+// Same rule as server.js (MIN_ANSWER_LENGTH); the inputs' maxlength covers the upper limit.
+const MIN_ANSWER_LENGTH = 2;
+
+function securityAnswerError(value) {
+  return value.trim().replace(/\s+/g, " ").length >= MIN_ANSWER_LENGTH ? "" : `Please write an answer (at least ${MIN_ANSWER_LENGTH} characters).`;
+}
+
+// ---------- Admin (admin.html; the server refuses these to anyone but an admin) ----------
+
+// `kind` is "orders", "messages" or "users". Products come from getProducts().
+function adminList(kind) {
+  return api(`api/admin/${kind}`);
+}
+
+function adminSetOrderStatus(orderId, status) {
+  return api(`api/admin/orders/${encodeURIComponent(orderId)}/status`, { method: "POST", body: { status } });
+}
+
+function adminSetMessageStatus(id, status) {
+  return api(`api/admin/messages/${encodeURIComponent(id)}/status`, { method: "POST", body: { status } });
+}
+
+// `changes` is { inStock, options: [{ name, available, salePrice }] }.
+function adminUpdateProduct(id, changes) {
+  return api(`api/admin/products/${encodeURIComponent(id)}`, { method: "POST", body: changes });
+}
+
+function adminUnlockUser(username) {
+  return api(`api/admin/users/${encodeURIComponent(username)}/unlock`, { method: "POST" });
+}
+
+// Builds the two question dropdowns used on sign-up and the account page. Choosing a question
+// in one dropdown hides it in the other, so the same question can't be picked twice.
+function fillQuestionSelects(selects, questions) {
+  const update = () => {
+    selects.forEach((select) => {
+      const taken = selects.filter((other) => other !== select).map((other) => other.value);
+      // hidden for most browsers, disabled for Safari, which shows hidden options anyway
+      [...select.options].forEach((option) => (option.hidden = option.disabled = option.value !== "" && taken.includes(option.value)));
+    });
+  };
+  selects.forEach((select) => {
+    select.innerHTML =
+      `<option value="">Choose a question</option>` +
+      questions.map((q) => `<option value="${escapeHtml(q.id)}">${escapeHtml(q.question)}</option>`).join("");
+    select.addEventListener("change", update);
+  });
+}
+
+// ---------- Products + reviews (read-only fallback when there's no server) ----------
+
+// Reads from the API. If the server isn't running, uses the copy of `fallbackPath` (one of the
+// data/*.json files) bundled in data/fallback.js.
+async function loadJson(apiPath, fallbackPath) {
+  try {
+    return await api(apiPath);
+  } catch (err) {
+    const fallback = window.EQUITY_FALLBACK_DATA && window.EQUITY_FALLBACK_DATA[fallbackPath];
     if (fallback) return JSON.parse(JSON.stringify(fallback));
     throw err;
   }
@@ -178,7 +230,7 @@ const ROAST_ORDER = ["Light", "Medium", "Dark"];
 const REGION_ORDER = ["South American", "Central American", "Asian", "South African", "Central African", "East African"];
 
 async function getProducts() {
-  return loadJson("data/products.json");
+  return loadJson("api/products", "data/products.json");
 }
 
 async function getProduct(id) {
@@ -295,32 +347,20 @@ function renderRecItems(matches) {
     .join("");
 }
 
-const QUIZ_KEY = "equity_quiz";
-
-// Every quiz run, oldest first: its top matches (best first), when it was taken, and who took
-// it (`username`, or null when logged out). Browsers from before accounts saved a single
-// result object; that one is read as a guest run.
-function getQuizResults() {
-  const stored = readJson(QUIZ_KEY, []);
-  const runs = Array.isArray(stored) ? stored : stored && stored.productIds ? [stored] : [];
-  return runs
-    .filter((r) => Array.isArray(r.productIds))
-    .map((r) => ({ ...r, username: r.username ?? null, productIds: r.productIds.map(currentProductId) }));
+// Saves a quiz run's top matches (best first) to the quizResults collection, under the
+// logged-in account or this visit's guest session.
+async function saveQuizResult(productIds) {
+  return api("api/quiz-results", { method: "POST", body: { productIds } });
 }
 
-function saveQuizResult(productIds) {
-  const result = { username: currentUsername(), productIds, takenAt: new Date().toISOString() };
+// The latest run for whoever is browsing: their own when logged in, this visit's guest run
+// otherwise. The shop sidebar shows its matches. null when there's none (or no server).
+async function getQuizResult() {
   try {
-    localStorage.setItem(QUIZ_KEY, JSON.stringify([...getQuizResults(), result]));
-  } catch {}
-  rememberGuestItem("quiz", result.takenAt);
-}
-
-// The latest run for whoever is browsing: their own when logged in, a guest run otherwise.
-// The shop sidebar shows its matches.
-function getQuizResult() {
-  const username = currentUsername();
-  return getQuizResults().filter((r) => r.username === username).at(-1) || null;
+    return await api("api/quiz-results/latest");
+  } catch {
+    return null;
+  }
 }
 
 const LAST_VIEWED_KEY = "equity_last_viewed";
@@ -351,11 +391,11 @@ function readJson(key, fallback) {
   }
 }
 
-// Reviews saved before products had IDs all belong to the original product.
+// The original coffee: product.html shows it when the link has no ?id=.
 const LEGACY_PRODUCT_ID = "1001";
 
 // Product IDs used to be text slugs before they became four-digit codes. Anything a
-// browser saved under an old slug (cart, reviews, quiz, links) is translated on read.
+// browser saved under an old slug (cart, last viewed, links) is translated on read.
 const OLD_PRODUCT_IDS = {
   "aprysa-peru": "1001",
   "huila-colombia": "1002",
@@ -377,26 +417,22 @@ function currentProductId(id) {
   return OLD_PRODUCT_IDS[id] || id;
 }
 
-function getUserReviews() {
-  const stored = readJson(REVIEWS_KEY, []);
-  if (!Array.isArray(stored)) return [];
-  return stored.map((r) => ({ ...r, productId: currentProductId(r.productId || LEGACY_PRODUCT_ID) }));
-}
-
-// Seed reviews come from data/reviews.json; reviews added by users live in localStorage.
-// Pass a productId to get only that product's reviews.
+// Reviews from the reviews collection, newest first. Pass a productId to get only that
+// product's reviews. Without a server, the seed reviews in data/reviews.json.
 async function getReviews(productId) {
-  const seed = await loadJson("data/reviews.json");
-  const isSeed = (r) => seed.some((s) => s.name === r.name && s.date === r.date);
-  const userReviews = getUserReviews().filter((r) => !isSeed(r));
-  const all = [...userReviews, ...seed];
-  return productId ? all.filter((r) => r.productId === productId) : all;
+  const query = productId ? `?productId=${encodeURIComponent(productId)}` : "";
+  const reviews = await loadJson(`api/reviews${query}`, "data/reviews.json");
+  return productId ? reviews.filter((r) => r.productId === productId) : reviews;
 }
 
-function addReview(review) {
-  const userReviews = getUserReviews();
-  userReviews.unshift(review);
-  localStorage.setItem(REVIEWS_KEY, JSON.stringify(userReviews));
+// The logged-in account's own reviews, newest first.
+async function getMyReviews() {
+  return api("api/me/reviews");
+}
+
+// `review` is { productId, rating, comment, date }; the server adds who wrote it.
+async function addReview(review) {
+  return api("api/reviews", { method: "POST", body: review });
 }
 
 // Today's date as YYYY-MM-DD in the customer's own time zone. (toISOString() uses UTC,
@@ -512,29 +548,24 @@ function formatMoney(amount) {
 
 // ---------- Orders ----------
 
-function saveOrder(order) {
-  const orders = readJson(ORDERS_KEY, []);
-  orders.push(order);
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-  rememberGuestItem("order", order.orderId);
+// Places an order for the cart's lines. The server looks up the prices itself and returns the
+// saved order: { orderId, username, customer, items, totals, amountCents, status, createdAt }.
+async function saveOrder(customer, cart = getCart()) {
+  const items = cart.map(({ productId, option, qty }) => ({ productId, option, qty }));
+  return api("api/orders", { method: "POST", body: { customer, items } });
+}
+
+// The logged-in account's orders, newest first.
+async function getOrders() {
+  return api("api/orders");
 }
 
 // ---------- Contact messages ----------
 
-// Messages from the contact page, shaped like the messages collection (see mongo/SCHEMA.md).
-const MESSAGES_KEY = "equity_messages";
-
-function saveMessage(message) {
-  const messages = readJson(MESSAGES_KEY, []);
-  messages.push(message);
-  localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
-}
-
-// An account's orders, newest first. Orders from before accounts have no username: guest orders.
-function getOrders(username) {
-  return readJson(ORDERS_KEY, [])
-    .filter((o) => (o.username ?? null) === username)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+// `message` is { name, email, topic, orderId, message }; the server adds who sent it, the
+// status and the time (see the messages collection in mongo/SCHEMA.md).
+async function saveMessage(message) {
+  return api("api/messages", { method: "POST", body: message });
 }
 
 // ---------- Icon toolbar menus (shop + reviews) ----------
@@ -683,6 +714,8 @@ function refreshCartBadge() {
   if (badge) badge.textContent = cartCount();
 }
 
+let sessionChecked = false;
+
 function renderNav(activePage) {
   const session = getSession();
   const mount = document.getElementById("site-header");
@@ -706,7 +739,10 @@ function renderNav(activePage) {
 
   let userSection;
   if (session && session.loggedIn) {
+    const adminLink =
+      session.role === "admin" ? `<a href="admin.html" class="${activePage === "admin.html" ? "active" : ""}">Admin</a>` : "";
     userSection = `
+      ${adminLink}
       <div class="nav-user">
         <a href="account.html" class="${activePage === "account.html" ? "active" : ""}">Welcome, ${escapeHtml(session.username)}</a>
         <button id="logout-btn" type="button">Log out</button>
@@ -730,10 +766,17 @@ function renderNav(activePage) {
 
   renderFooter(activePage);
 
+  // The first draw used this browser's copy of the session; check it with the server once.
+  if (!sessionChecked) {
+    sessionChecked = true;
+    refreshSession(activePage);
+  }
+
   const logoutBtn = document.getElementById("logout-btn");
   if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      clearSession();
+    logoutBtn.addEventListener("click", async () => {
+      logoutBtn.disabled = true;
+      await logOut();
       renderNav(activePage);
       // Pages that show account data (reviews form, shop sidebar, account page) refresh here.
       if (typeof window.onSessionChanged === "function") {

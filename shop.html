@@ -182,10 +182,10 @@
 
     // Left sidebar: match the cart, else the quiz results, else the last coffee viewed,
     // else the best-rated coffees.
-    function renderSidebar() {
+    async function renderSidebar() {
       const title = document.getElementById("side-title");
       const basis = document.getElementById("side-basis");
-      const quiz = getQuizResult();
+      const quiz = await getQuizResult();
       const quizMatches = quiz
         ? quiz.productIds.map((id) => products.find((p) => p.id === id)).filter(Boolean).map((p) => ({ product: p, shared: [] }))
         : [];

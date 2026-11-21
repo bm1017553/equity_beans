@@ -89,8 +89,8 @@
     }
 
     // Someone who has taken the quiz sees their match instead of the invitation.
-    function renderQuizInvite(products) {
-      const result = getQuizResult();
+    async function renderQuizInvite(products) {
+      const result = await getQuizResult();
       const match = result && products.find((p) => p.id === result.productIds[0]);
       if (!match) return;
       document.getElementById("quiz-invite-title").textContent = "Your coffee quiz match";
@@ -105,7 +105,7 @@
         const [products, reviews] = await Promise.all([getProducts(), getReviews()]);
         const ratings = ratingsByProduct(reviews);
         grid.innerHTML = pickFeatured(products).map((p) => renderProductCard(p, ratings[p.id])).join("");
-        renderQuizInvite(products);
+        await renderQuizInvite(products);
       } catch (err) {
         grid.innerHTML = `<p class="error-text">Could not load the coffees. Make sure the site is running on a local server.</p>`;
         console.error(err);

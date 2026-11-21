@@ -74,6 +74,7 @@
         </div>
         <button type="submit" class="btn" id="send-btn" disabled>Send message</button>
         <p class="action-hint" id="send-hint">Fill in each field to send your message.</p>
+        <p class="error-text" id="send-error" role="alert"></p>
       </form>
 
       <aside class="card contact-side" aria-labelledby="before-title">
@@ -156,9 +157,24 @@
       updateFormState();
     });
 
-    // A logged-in customer with orders picks one from a list instead of typing it.
-    const orders = username ? getOrders(username) : [];
-    if (orders.length) {
+    // Typed order numbers are upper case, like the ones on the confirmation screen.
+    document.getElementById("contact-order").addEventListener("input", (e) => {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
+    // A logged-in customer with orders picks one from a list instead of typing it, and the form
+    // starts from the name and email on their latest order.
+    async function useAccountOrders() {
+      if (!username) return;
+      let orders;
+      try {
+        orders = await getOrders();
+      } catch (err) {
+        console.error(err);
+        return;
+      }
+      if (!orders.length) return;
+
       const typed = document.getElementById("contact-order");
       const select = document.createElement("select");
       select.id = "contact-order";
@@ -169,18 +185,18 @@
           .join("");
       typed.replaceWith(select);
       watchField("contact-order");
-    } else {
-      // Typed order numbers are upper case, like the ones on the confirmation screen.
-      document.getElementById("contact-order").addEventListener("input", (e) => {
-        e.target.value = e.target.value.toUpperCase();
-      });
+
+      // Only fill fields the customer hasn't started typing in.
+      const fill = (id, value) => {
+        const input = document.getElementById(id);
+        if (!input.value) input.value = value;
+      };
+      fill("contact-name", orders[0].customer.name);
+      fill("contact-email", orders[0].customer.email);
+      updateFormState();
     }
 
-    // Logged in: start from the name and email on their latest order.
-    if (orders.length) {
-      document.getElementById("contact-name").value = orders[0].customer.name;
-      document.getElementById("contact-email").value = orders[0].customer.email;
-    }
+    useAccountOrders();
 
     // ---------- Character counter (same limit as the database) ----------
 
@@ -193,24 +209,32 @@
 
     // ---------- Send ----------
 
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
       Object.keys(validators).forEach((id) => (touched[id] = true));
       if (!updateFormState()) return;
 
       const topic = fieldValue("contact-topic");
-      // Shaped for the messages collection (see mongo/SCHEMA.md).
+      // The server adds who sent it, the status and the time (see the messages collection in
+      // mongo/SCHEMA.md).
       const message = {
-        username, // the API maps this to userId; null when logged out
         name: fieldValue("contact-name"),
         email: fieldValue("contact-email"),
         topic,
         orderId: topic === "order" && fieldValue("contact-order") ? fieldValue("contact-order") : null,
         message: fieldValue("contact-message"),
-        status: "new",
-        createdAt: new Date().toISOString(),
       };
-      saveMessage(message);
+
+      const errorEl = document.getElementById("send-error");
+      errorEl.textContent = "";
+      sendBtn.disabled = true;
+      try {
+        await saveMessage(message);
+      } catch (err) {
+        errorEl.textContent = err.message;
+        updateFormState();
+        return;
+      }
 
       document.getElementById("sent-name").textContent = message.name.split(" ")[0];
       document.getElementById("sent-email").textContent = message.email;

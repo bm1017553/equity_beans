@@ -31,6 +31,76 @@
       </section>
 
       <div class="account-side">
+        <section class="card account-section" aria-labelledby="password-title">
+          <h2 id="password-title">Password</h2>
+          <div id="password-summary">
+            <p class="account-password-note">Changing it logs you out on your other devices.</p>
+            <button type="button" class="link-button" id="pw-edit">Change password</button>
+          </div>
+          <p class="error-text success" id="pw-done" role="status"></p>
+          <form class="stacked security-form" id="password-form" novalidate hidden>
+            <div>
+              <label for="pw-current">Current password</label>
+              <input type="password" id="pw-current" autocomplete="current-password" aria-describedby="pw-current-error" />
+              <span class="error-text" id="pw-current-error"></span>
+            </div>
+            <div>
+              <label for="pw-new">New password</label>
+              <input type="password" id="pw-new" autocomplete="new-password" aria-describedby="pw-new-hint pw-new-error" />
+              <span class="field-hint" id="pw-new-hint">At least 8 characters.</span>
+              <span class="error-text" id="pw-new-error"></span>
+            </div>
+            <div>
+              <label for="pw-confirm">Confirm new password</label>
+              <input type="password" id="pw-confirm" autocomplete="new-password" aria-describedby="pw-confirm-error" />
+              <span class="error-text" id="pw-confirm-error"></span>
+            </div>
+            <div class="security-form-actions">
+              <button type="submit" class="btn" id="pw-save">Save Password</button>
+              <button type="button" class="link-button" id="pw-cancel">Cancel</button>
+            </div>
+            <p class="error-text" id="pw-msg" role="status"></p>
+          </form>
+        </section>
+
+        <section class="card account-section" aria-labelledby="security-title">
+          <h2 id="security-title">Security questions</h2>
+          <div id="account-security"></div>
+          <form class="stacked security-form" id="security-form" novalidate hidden>
+            <p class="field-hint">Answering both lets you choose a new password if you forget yours. Pick answers you’ll remember exactly but others can’t look up.</p>
+            <div>
+              <label for="sq-q1">Question 1</label>
+              <select id="sq-q1" aria-describedby="sq-q1-error"></select>
+              <span class="error-text" id="sq-q1-error"></span>
+            </div>
+            <div>
+              <label for="sq-a1">Answer 1</label>
+              <input type="text" id="sq-a1" maxlength="100" autocomplete="off" spellcheck="false" aria-describedby="sq-a1-error" />
+              <span class="error-text" id="sq-a1-error"></span>
+            </div>
+            <div>
+              <label for="sq-q2">Question 2</label>
+              <select id="sq-q2" aria-describedby="sq-q2-error"></select>
+              <span class="error-text" id="sq-q2-error"></span>
+            </div>
+            <div>
+              <label for="sq-a2">Answer 2</label>
+              <input type="text" id="sq-a2" maxlength="100" autocomplete="off" spellcheck="false" aria-describedby="sq-a2-error" />
+              <span class="error-text" id="sq-a2-error"></span>
+            </div>
+            <div>
+              <label for="sq-password">Current password</label>
+              <input type="password" id="sq-password" autocomplete="current-password" aria-describedby="sq-password-error" />
+              <span class="error-text" id="sq-password-error"></span>
+            </div>
+            <div class="security-form-actions">
+              <button type="submit" class="btn" id="sq-save">Save Questions</button>
+              <button type="button" class="link-button" id="sq-cancel">Cancel</button>
+            </div>
+            <p class="error-text" id="sq-msg" role="status"></p>
+          </form>
+        </section>
+
         <section class="card account-section" aria-labelledby="quiz-title">
           <h2 id="quiz-title">Your quiz matches</h2>
           <div id="account-quiz"></div>
@@ -56,14 +126,12 @@
     // Logging out from this page leaves nothing to show.
     window.onSessionChanged = () => (window.location.href = "index.html");
 
-    const STATUS_LABELS = { pending_payment: "Awaiting payment" };
 
     function formatDate(iso) {
       return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
     }
 
-    function renderOrders(productsById) {
-      const orders = getOrders(username);
+    function renderOrders(orders, productsById) {
       const el = document.getElementById("account-orders");
       if (!orders.length) {
         el.innerHTML = `<div class="empty-state">No orders yet. <a href="shop.html">Shop coffee</a></div>`;
@@ -78,7 +146,7 @@
               <strong>Order ${escapeHtml(order.orderId)}</strong>
               <span class="muted">Placed ${escapeHtml(formatDate(order.createdAt))}</span>
             </div>
-            <span class="tag">${escapeHtml(STATUS_LABELS[order.status] || order.status)}</span>
+            <span class="tag order-status order-status-${escapeHtml(order.status)}">${escapeHtml(ORDER_STATUS_LABELS[order.status] || order.status)}</span>
           </div>
           <div class="confirm-lines">
             ${order.items
@@ -102,8 +170,7 @@
         .join("");
     }
 
-    function renderQuiz(productsById) {
-      const result = getQuizResult();
+    function renderQuiz(result, productsById) {
       const matches = result ? result.productIds.map((id) => productsById[id]).filter(Boolean) : [];
       const el = document.getElementById("account-quiz");
       if (!matches.length) {
@@ -119,10 +186,7 @@
         <div class="rec-list">${renderRecItems(matches.map((product) => ({ product, shared: [] })))}</div>`;
     }
 
-    function renderReviews(productsById) {
-      // Reviews this account wrote. Reviews from before accounts have no username, so they
-      // aren't claimed by whoever later signs up with the same name.
-      const reviews = getUserReviews().filter((r) => r.username === username);
+    function renderReviews(reviews, productsById) {
       const el = document.getElementById("account-reviews");
       if (!reviews.length) {
         el.innerHTML = `<div class="empty-state">You haven’t reviewed any coffees yet. <a href="reviews.html">Write a review</a></div>`;
@@ -144,8 +208,168 @@
         .join("");
     }
 
+    // ---------- Password ----------
+
+    const passwordForm = document.getElementById("password-form");
+    const passwordSummary = document.getElementById("password-summary");
+    const passwordMsg = document.getElementById("pw-msg");
+    const passwordDone = document.getElementById("pw-done");
+
+    const passwordChecks = {
+      "pw-current": (v) => (v ? "" : "Please enter your current password."),
+      "pw-new": (v) => (v.length >= MIN_PASSWORD_LENGTH ? "" : `Use at least ${MIN_PASSWORD_LENGTH} characters.`),
+      "pw-confirm": (v) => {
+        if (!v) return "Please enter your new password again.";
+        return v === document.getElementById("pw-new").value ? "" : "Passwords don’t match.";
+      },
+    };
+
+    function closePasswordForm() {
+      passwordForm.hidden = true;
+      passwordForm.reset();
+      passwordMsg.textContent = "";
+      Object.keys(passwordChecks).forEach((id) => {
+        document.getElementById(id).classList.remove("invalid");
+        document.getElementById(`${id}-error`).textContent = "";
+      });
+      passwordSummary.hidden = false;
+    }
+
+    document.getElementById("pw-edit").addEventListener("click", () => {
+      passwordDone.textContent = "";
+      passwordSummary.hidden = true;
+      passwordForm.hidden = false;
+      document.getElementById("pw-current").focus();
+    });
+    document.getElementById("pw-cancel").addEventListener("click", closePasswordForm);
+
+    passwordForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const invalid = Object.entries(passwordChecks).filter(([id, check]) => {
+        const message = check(document.getElementById(id).value);
+        document.getElementById(id).classList.toggle("invalid", Boolean(message));
+        document.getElementById(`${id}-error`).textContent = message;
+        return message;
+      });
+      passwordMsg.textContent = "";
+      if (invalid.length) {
+        document.getElementById(invalid[0][0]).focus();
+        return;
+      }
+
+      const saveBtn = document.getElementById("pw-save");
+      saveBtn.disabled = true;
+      let result;
+      try {
+        result = await changePassword(document.getElementById("pw-current").value, document.getElementById("pw-new").value);
+      } catch (err) {
+        if (err.status === 401) {
+          clearSession();
+          window.location.replace("login.html?next=account.html");
+          return;
+        }
+        passwordMsg.textContent = err.message;
+        return;
+      } finally {
+        saveBtn.disabled = false;
+      }
+      closePasswordForm();
+      const others = result.otherSessionsEnded;
+      passwordDone.textContent = `Password changed.${others ? ` You were logged out on ${others} other device${others === 1 ? "" : "s"}.` : ""}`;
+    });
+
+    // ---------- Security questions (for resetting a forgotten password) ----------
+
+    const securityForm = document.getElementById("security-form");
+    const securityMsg = document.getElementById("sq-msg");
+    const questionSelects = [document.getElementById("sq-q1"), document.getElementById("sq-q2")];
+    let accountQuestions = null; // the wording of the two questions, or null when not set up
+
+    const securityChecks = {
+      "sq-q1": (v) => (v ? "" : "Please choose a question."),
+      "sq-a1": securityAnswerError,
+      "sq-q2": (v) => (v ? "" : "Please choose a question."),
+      "sq-a2": securityAnswerError,
+      "sq-password": (v) => (v ? "" : "Please enter your current password."),
+    };
+
+    function renderSecurity() {
+      const el = document.getElementById("account-security");
+      el.innerHTML = accountQuestions
+        ? `<ol class="account-questions">${accountQuestions.map((q) => `<li>${escapeHtml(q)}</li>`).join("")}</ol>
+           <button type="button" class="link-button" id="sq-edit">Change questions</button>`
+        : `<p class="account-security-missing">Add two security questions so you can reset your password if you forget it.</p>
+           <button type="button" class="btn btn-secondary" id="sq-edit">Add Security Questions</button>`;
+      el.hidden = !securityForm.hidden;
+      document.getElementById("sq-edit").addEventListener("click", () => {
+        securityForm.hidden = false;
+        el.hidden = true;
+        questionSelects[0].focus();
+      });
+    }
+
+    function closeSecurityForm() {
+      securityForm.hidden = true;
+      securityForm.reset();
+      questionSelects[0].dispatchEvent(new Event("change")); // un-hides options hidden by a choice
+      securityMsg.textContent = "";
+      Object.keys(securityChecks).forEach((id) => {
+        document.getElementById(id).classList.remove("invalid");
+        document.getElementById(`${id}-error`).textContent = "";
+      });
+      renderSecurity();
+    }
+
+    document.getElementById("sq-cancel").addEventListener("click", closeSecurityForm);
+
+    securityForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const invalid = Object.entries(securityChecks).filter(([id, check]) => {
+        const message = check(document.getElementById(id).value);
+        document.getElementById(id).classList.toggle("invalid", Boolean(message));
+        document.getElementById(`${id}-error`).textContent = message;
+        return message;
+      });
+      securityMsg.textContent = "";
+      if (invalid.length) {
+        document.getElementById(invalid[0][0]).focus();
+        return;
+      }
+
+      const saveBtn = document.getElementById("sq-save");
+      saveBtn.disabled = true;
+      try {
+        const questions = [1, 2].map((n) => ({
+          questionId: document.getElementById(`sq-q${n}`).value,
+          answer: document.getElementById(`sq-a${n}`).value,
+        }));
+        accountQuestions = (await updateSecurityQuestions(questions, document.getElementById("sq-password").value)).securityQuestions;
+      } catch (err) {
+        if (err.status === 401) {
+          clearSession();
+          window.location.replace("login.html?next=account.html");
+          return;
+        }
+        securityMsg.textContent = err.message;
+        return;
+      } finally {
+        saveBtn.disabled = false;
+      }
+      closeSecurityForm();
+    });
+
     async function init() {
       document.getElementById("account-lead").textContent = `Logged in as ${username}.`;
+      Promise.all([getAccount(), getSecurityQuestionList()])
+        .then(([account, questions]) => {
+          if (account.role === "admin") {
+            document.getElementById("account-lead").insertAdjacentHTML("beforeend", ` <span class="tag">Administrator</span>`);
+          }
+          fillQuestionSelects(questionSelects, questions);
+          accountQuestions = account.securityQuestions;
+          renderSecurity();
+        })
+        .catch((err) => console.error(err));
       let productsById = {};
       try {
         const products = await getProducts();
@@ -154,9 +378,23 @@
         // Thumbnails and quiz matches need product data; orders and reviews still show without it.
         console.error(err);
       }
-      renderOrders(productsById);
-      renderQuiz(productsById);
-      renderReviews(productsById);
+
+      let orders, quiz, reviews;
+      try {
+        [orders, quiz, reviews] = await Promise.all([getOrders(), getQuizResult(), getMyReviews()]);
+      } catch (err) {
+        // The server's login has ended (or there's no server): log in again.
+        if (err.status === 401) {
+          clearSession();
+          window.location.replace("login.html?next=account.html");
+          return;
+        }
+        document.getElementById("account-orders").innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        return;
+      }
+      renderOrders(orders, productsById);
+      renderQuiz(quiz, productsById);
+      renderReviews(reviews, productsById);
     }
 
     if (username) init();

@@ -448,7 +448,8 @@
       });
 
       // Remember the matches so the shop's sidebar can show them.
-      saveQuizResult([top, ...runners].map((m) => m.product.id));
+      // Saved in the background; the results show either way.
+      saveQuizResult([top, ...runners].map((m) => m.product.id)).catch((err) => console.error(err));
       document.getElementById("quiz-save-note").hidden = Boolean(currentUsername());
 
       quizEl.hidden = true;

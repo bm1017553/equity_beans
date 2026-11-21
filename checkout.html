@@ -81,6 +81,7 @@
         <!-- Lives outside the <form> so it can sit in the summary; form="" still submits it. -->
         <button type="submit" form="checkout-form" class="btn btn-block" id="place-order" disabled>Place Order</button>
         <p class="action-hint" id="place-hint">Complete your shipping details to place the order.</p>
+        <p class="error-text" id="order-error" role="alert"></p>
         <a href="cart.html" class="continue-link">Edit cart</a>
       </aside>
     </div>
@@ -180,10 +181,6 @@
       placeOrderBtn.textContent = `Place Order — ${formatMoney(total)}`;
     }
 
-    function makeOrderId() {
-      return `EB-${Date.now().toString(36).toUpperCase()}`;
-    }
-
     function showConfirmation(order) {
       document.getElementById("steps").innerHTML = renderSteps(2);
       document.getElementById("page-title").textContent = "Confirmation";
@@ -199,34 +196,36 @@
       window.scrollTo(0, 0);
     }
 
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
       Object.keys(validators).forEach((id) => (touched[id] = true));
       if (!updateFormState()) return;
 
-      const items = getCart();
-      const totals = cartTotals(items);
-      // Shaped for a future MongoDB "orders" collection and a Square CreatePayment request.
-      const order = {
-        orderId: makeOrderId(),
-        // The account that ordered, or null for guest checkout (the API maps it to userId).
-        username: currentUsername(),
-        customer: {
+      const errorEl = document.getElementById("order-error");
+      errorEl.textContent = "";
+      const label = placeOrderBtn.textContent;
+      placeOrderBtn.disabled = true;
+      placeOrderBtn.textContent = "Placing order…";
+
+      // The server prices the cart itself and saves the order to the orders collection, under
+      // the logged-in account or as a guest order (see mongo/SCHEMA.md).
+      let order;
+      try {
+        order = await saveOrder({
           name: fieldValue("full-name"),
           email: fieldValue("email"),
           address: fieldValue("address"),
           city: fieldValue("city"),
           state: fieldValue("state").toUpperCase(),
           zip: fieldValue("zip"),
-        },
-        items,
-        totals,
-        amountCents: Math.round(totals.total * 100),
-        status: "pending_payment",
-        createdAt: new Date().toISOString(),
-      };
-
-      saveOrder(order);
+        });
+      } catch (err) {
+        // Nothing was ordered, so the cart stays as it is.
+        errorEl.textContent = err.message;
+        placeOrderBtn.textContent = label;
+        updateFormState();
+        return;
+      }
       clearCart();
       showConfirmation(order);
     });

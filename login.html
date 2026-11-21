@@ -66,6 +66,7 @@
             </div>
             <span class="caps-warning" id="password-caps" hidden>Caps Lock is on</span>
             <span class="error-text" id="password-error"></span>
+            <a href="password-reset.html" class="forgot-link" id="forgot-link">Forgot password?</a>
           </div>
           <button type="submit" class="btn btn-block" id="login-btn">Log In</button>
           <p class="error-text" id="login-msg" role="status"></p>
@@ -93,6 +94,30 @@
             <input type="password" id="confirm-password" autocomplete="new-password" aria-describedby="confirm-password-error" />
             <span class="error-text" id="confirm-password-error"></span>
           </div>
+          <fieldset class="security-questions">
+            <legend>Security questions</legend>
+            <p class="field-hint">If you forget your password, answering both lets you choose a new one. Pick answers you’ll remember exactly but others can’t look up.</p>
+            <div>
+              <label for="new-q1">Question 1</label>
+              <select id="new-q1" aria-describedby="new-q1-error"></select>
+              <span class="error-text" id="new-q1-error"></span>
+            </div>
+            <div>
+              <label for="new-a1">Answer 1</label>
+              <input type="text" id="new-a1" maxlength="100" autocomplete="off" spellcheck="false" aria-describedby="new-a1-error" />
+              <span class="error-text" id="new-a1-error"></span>
+            </div>
+            <div>
+              <label for="new-q2">Question 2</label>
+              <select id="new-q2" aria-describedby="new-q2-error"></select>
+              <span class="error-text" id="new-q2-error"></span>
+            </div>
+            <div>
+              <label for="new-a2">Answer 2</label>
+              <input type="text" id="new-a2" maxlength="100" autocomplete="off" spellcheck="false" aria-describedby="new-a2-error" />
+              <span class="error-text" id="new-a2-error"></span>
+            </div>
+          </fieldset>
           <button type="submit" class="btn btn-block" id="signup-btn">Create Account</button>
           <p class="error-text" id="signup-msg" role="status"></p>
         </form>
@@ -139,6 +164,12 @@
 
     document.getElementById("guest-link").href = nextPage();
 
+    // Carries over whatever is typed in Username, so the reset form starts filled in.
+    document.getElementById("forgot-link").addEventListener("click", (e) => {
+      const typed = document.getElementById("username").value.trim();
+      if (typed) e.currentTarget.href = `password-reset.html?for=${encodeURIComponent(typed)}`;
+    });
+
     // ---------- Field validation (shown once a field has been left) ----------
 
     // Each check returns an error message, or "" when the value is fine.
@@ -150,8 +181,8 @@
         check: (v) => {
           const name = v.trim();
           if (!name) return "Please choose a username.";
-          if (!USERNAME_PATTERN.test(name)) return "Use 3–30 letters, numbers, dots, dashes or underscores.";
-          return findUser(name) ? "That username is already taken." : "";
+          // Whether it's taken is checked by the server when the form is sent.
+          return USERNAME_PATTERN.test(name) ? "" : "Use 3–30 letters, numbers, dots, dashes or underscores.";
         },
       },
       "new-password": {
@@ -165,6 +196,11 @@
           return v === document.getElementById("new-password").value ? "" : "Passwords don’t match.";
         },
       },
+      // In the same order as the form, so the first problem gets the focus.
+      "new-q1": { form: "signup", check: (v) => (v ? "" : "Please choose a question.") },
+      "new-a1": { form: "signup", check: securityAnswerError },
+      "new-q2": { form: "signup", check: (v) => (v ? "" : "Please choose a question.") },
+      "new-a2": { form: "signup", check: securityAnswerError },
     };
 
     function validateField(id, show) {
@@ -265,10 +301,6 @@
 
     // ---------- Submit ----------
 
-    // Accounts use the browser's Web Crypto, which only runs on secure pages (http://localhost,
-    // https, or a file opened from disk).
-    const NO_CRYPTO = "Accounts can’t be used on this page. Open the site from http://localhost:8080.";
-
     // "We saved your quiz matches and 2 orders to your account. " (empty when nothing moved)
     function savedMessage({ quizzes, orders }) {
       const parts = [];
@@ -277,7 +309,7 @@
       return parts.length ? `We saved ${parts.join(" and ")} to your account. ` : "";
     }
 
-    // Shows a busy label while the password is hashed; pass null to restore the button.
+    // Shows a busy label while the server checks the password; pass null to restore the button.
     function setBusy(btn, label) {
       btn.disabled = Boolean(label);
       btn.classList.toggle("is-loading", Boolean(label));
@@ -286,9 +318,9 @@
     loginBtn.dataset.label = loginBtn.textContent;
     signupBtn.dataset.label = signupBtn.textContent;
 
-    function finish(username, msg, greeting) {
-      setSession(username);
-      const claimed = claimGuestItems(username);
+    // `claimed` counts the guest quiz runs and orders the server moved to the account.
+    function finish(username, claimed, msg, greeting) {
+      renderNav("login.html");
       msg.classList.add("success");
       msg.textContent = `${greeting} ${savedMessage(claimed)}Taking you back…`;
       // A little longer when there's a "we saved…" line to read.
@@ -304,23 +336,20 @@
       if (!validateForm("login")) return;
 
       setBusy(loginBtn, "Logging in…");
-      let username;
+      let result;
       try {
-        username = await logIn(document.getElementById("username").value.trim(), passwordInput.value);
+        result = await logIn(document.getElementById("username").value.trim(), passwordInput.value);
       } catch (err) {
-        console.error(err);
         setBusy(loginBtn, null);
-        loginMsg.textContent = NO_CRYPTO;
+        // The server's messages are written for the form ("Username or password is incorrect.").
+        loginMsg.textContent = err.message;
+        if (err.status === 401) {
+          passwordInput.focus();
+          passwordInput.select();
+        }
         return;
       }
-      if (!username) {
-        setBusy(loginBtn, null);
-        loginMsg.textContent = "Username or password is incorrect.";
-        passwordInput.focus();
-        passwordInput.select();
-        return;
-      }
-      finish(username, loginMsg, `Welcome back, ${username}!`);
+      finish(result.username, result.claimed, loginMsg, `Welcome back, ${result.username}!`);
     });
 
     signupForm.addEventListener("submit", async (e) => {
@@ -330,19 +359,23 @@
       if (!validateForm("signup")) return;
 
       setBusy(signupBtn, "Creating account…");
-      let username;
+      let result;
       try {
-        username = await createAccount(
+        result = await createAccount(
           document.getElementById("new-username").value.trim(),
-          document.getElementById("new-password").value
+          document.getElementById("new-password").value,
+          [1, 2].map((n) => ({
+            questionId: document.getElementById(`new-q${n}`).value,
+            answer: document.getElementById(`new-a${n}`).value,
+          }))
         );
       } catch (err) {
         setBusy(signupBtn, null);
-        // createAccount's own errors are written for the form; anything else is missing crypto.
-        signupMsg.textContent = err instanceof TypeError ? NO_CRYPTO : err.message;
+        // The server's messages are written for the form ("That username is already taken.").
+        signupMsg.textContent = err.message;
         return;
       }
-      finish(username, signupMsg, `Welcome, ${username}! Your account is ready.`);
+      finish(result.username, result.claimed, signupMsg, `Welcome, ${result.username}! Your account is ready.`);
     });
 
     // ---------- Panel content from the data files ----------
@@ -375,6 +408,11 @@
     }
 
     init().catch((err) => console.error(err));
+
+    // The question list comes from the server, so it always matches what the server accepts.
+    getSecurityQuestionList()
+      .then((questions) => fillQuestionSelects([document.getElementById("new-q1"), document.getElementById("new-q2")], questions))
+      .catch((err) => console.error(err));
   </script>
 </body>
 </html>

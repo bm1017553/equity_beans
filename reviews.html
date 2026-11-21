@@ -341,15 +341,16 @@
         msg.textContent = "Please write a comment before submitting.";
         return;
       }
-      addReview({
-        productId: reviewProduct.value,
-        // The account that wrote it (the API maps it to userId); `name` is what's displayed.
-        username,
-        name: username,
-        rating,
-        comment,
-        date: localDateString(),
-      });
+      // The server records which account wrote it and shows the username as the reviewer's name.
+      try {
+        await addReview({ productId: reviewProduct.value, rating, comment, date: localDateString() });
+      } catch (err) {
+        msg.classList.remove("success");
+        msg.textContent = err.message;
+        // The server's login expired: show the "log in to review" notice instead of the form.
+        if (err.status === 401) refreshSession("reviews.html");
+        return;
+      }
       commentInput.value = "";
       updateCharCount();
       selectRating(5);

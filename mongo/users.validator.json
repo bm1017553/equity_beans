@@ -2,7 +2,7 @@
   "$jsonSchema": {
     "bsonType": "object",
     "title": "Equity Beans user",
-    "required": ["username", "passwordHash", "createdAt"],
+    "required": ["username", "passwordHash", "role", "createdAt"],
     "properties": {
       "_id": {
         "bsonType": "objectId"
@@ -11,6 +11,50 @@
         "bsonType": "string",
         "pattern": "^[A-Za-z0-9_.-]{3,30}$",
         "description": "Chosen on the sign-up form (login.html). Letters, numbers, dot, dash, underscore; same rule as USERNAME_PATTERN in app.js. Unique ignoring case (case-insensitive unique index), so 'Maria' and 'maria' are one account."
+      },
+      "role": {
+        "enum": ["customer", "admin"],
+        "description": "What the account may do. Sign-up always makes a 'customer'; an 'admin' can only be made in the database, never from the site. Admin-only pages check this on the server."
+      },
+      "securityQuestions": {
+        "bsonType": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Optional, because accounts made before password reset don't have them. Sign-up asks for two, and the account page can add or change them. 'Forgot password?' asks both. Order matters: the reset form shows and checks them in this order.",
+        "items": {
+          "bsonType": "object",
+          "required": ["questionId", "answerHash"],
+          "additionalProperties": false,
+          "properties": {
+            "questionId": {
+              "enum": ["first-pet", "childhood-street", "first-concert", "childhood-friend", "first-car", "favorite-teacher", "first-job", "parents-met"],
+              "description": "Which question, by id (SECURITY_QUESTIONS in server.js holds the wording), so rewording a question doesn't break saved answers."
+            },
+            "answerHash": {
+              "bsonType": "string",
+              "pattern": "^pbkdf2-sha256\\$[0-9]+\\$",
+              "description": "The answer, lower-cased and with spaces tidied, hashed exactly like a password. Never the answer itself."
+            }
+          }
+        }
+      },
+      "loginFailures": {
+        "bsonType": "int",
+        "minimum": 0,
+        "description": "Optional. Wrong passwords (at login, or as the 'current password' on the account page) since the last lock or successful login. At 10, logging in locks for 15 minutes and this goes back to 0."
+      },
+      "loginLockedUntil": {
+        "bsonType": "date",
+        "description": "Optional. While in the future, logging in is refused even with the right password. A password reset through the security questions, or an admin's Unlock, ends it early."
+      },
+      "resetFailures": {
+        "bsonType": "int",
+        "minimum": 0,
+        "description": "Optional. Wrong answers on 'Forgot password?' since the last lock or success. At 5, resets lock for an hour and this goes back to 0."
+      },
+      "resetLockedUntil": {
+        "bsonType": "date",
+        "description": "Optional. While in the future, 'Forgot password?' refuses this account (logging in with the password still works). Removed after a successful reset."
       },
       "passwordHash": {
         "bsonType": "string",

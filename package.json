@@ -8,7 +8,7 @@
     "start": "node --env-file-if-exists=.env server.js"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.9.0"
   },
   "dependencies": {
     "connect-mongo": "^6.0.0",

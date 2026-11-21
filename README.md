@@ -122,8 +122,8 @@ or 24.15+** (Angular 22's requirement), newer than what running the site needs.
 
 ## Test accounts
 
-`AI_Use_Stmt+Reasoning/Test_Account.docx` lists the two test accounts, `admin` and `testuser`. It
-also covers what each page does and what to try.
+`AI_Use_Stmt+Reasoning/Final_Project_Breakdown.docx` lists the two test accounts, `admin` and `testuser`. It
+also covers how the project meets each assignment requirement, what each page does and what to try.
 
 Those accounts live in the database they were made in. On a fresh installation, `create-users.js`
 adds only sample users with placeholder passwords, which can't log in. To make the test accounts:
@@ -163,4 +163,4 @@ adds only sample users with placeholder passwords, which can't log in. To make t
 | `data/`                  | The coffee and seed review data, and an offline copy for pages opened from disk |
 | `mongo/`                 | Database scripts, validation rules (`*.validator.json`) and `SCHEMA.md`     |
 | `.env.example`           | The settings template for `.env`                                           |
-| `AI_Use_Stmt+Reasoning/` | Assignment write-ups, including `Test_Account.docx`                        |
+| `AI_Use_Stmt+Reasoning/` | Assignment write-ups, including `Final_Project_Breakdown.docx`             |

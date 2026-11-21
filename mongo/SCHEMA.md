@@ -241,7 +241,7 @@ admin role works straight away. `/api/session` also reads the role from the data
 header's Admin link follows a role change on the next page.
 
 The sample users in `create-users.js` have placeholder hashes, so nobody can log in as them. To try
-the site, use the accounts in `AI_Use_Stmt+Reasoning/Test_Account.docx` or create a new one on
+the site, use the accounts in `AI_Use_Stmt+Reasoning/Final_Project_Breakdown.docx` or create a new one on
 `login.html`.
 
 **Indexes:** `username` (unique, **case-insensitive**: collation `{ locale: "en", strength: 2 }`).

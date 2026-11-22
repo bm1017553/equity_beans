@@ -1,6 +1,0 @@
-I used Claude AI to help me specifically with the design of the website
-like the color gradients, banners, and spacing of the boxes. It also helped if 
-I needed to make a large change to multiple files because it's much faster at 
-that than me to be honest. It also reviewed my code, found that "fallback" error
-with the JSON files and helped me add the Javascript files so the code will 
-launch from the disk.

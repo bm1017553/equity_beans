@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Observable } from 'rxjs';
+import { Observable, finalize } from 'rxjs';
 import { AdminStore } from '../admin-store';
 import { AdminUser, UserProblem, errorMessage } from '../admin-api';
 import { ROLE_LABELS, options } from '../labels';
@@ -129,16 +129,12 @@ export class UsersPage {
   private run<T>(u: AdminUser, request: Observable<T>, done: (result: T) => string, noteKey = u.username) {
     this.busy.set(u.username);
     this.banner.set('');
-    request.subscribe({
+    request.pipe(finalize(() => this.busy.set(null))).subscribe({
       next: (result) => {
         this.open.set(null);
         this.notes.show(noteKey, done(result), true);
       },
-      error: (err) => {
-        this.notes.show(u.username, errorMessage(err), false);
-        this.busy.set(null);
-      },
-      complete: () => this.busy.set(null),
+      error: (err) => this.notes.show(u.username, errorMessage(err), false),
     });
   }
 
@@ -172,19 +168,18 @@ export class UsersPage {
 
   protected deleteUser(u: AdminUser) {
     this.busy.set(u.username);
-    this.store.deleteUser(u.username).subscribe({
-      next: (r) => {
-        this.open.set(null);
-        const k = r.kept;
-        this.banner.set(
-          `Deleted ${r.username}. Kept as guest records: ${k.orders} order(s), ${k.reviews} review(s), ${k.quizResults} quiz result(s), ${k.messages} message(s).`,
-        );
-      },
-      error: (err) => {
-        this.notes.show(u.username, errorMessage(err), false);
-        this.busy.set(null);
-      },
-      complete: () => this.busy.set(null),
-    });
+    this.store
+      .deleteUser(u.username)
+      .pipe(finalize(() => this.busy.set(null)))
+      .subscribe({
+        next: (r) => {
+          this.open.set(null);
+          const k = r.kept;
+          this.banner.set(
+            `Deleted ${r.username}. Kept as guest records: ${k.orders} order(s), ${k.reviews} review(s), ${k.quizResults} quiz result(s), ${k.messages} message(s).`,
+          );
+        },
+        error: (err) => this.notes.show(u.username, errorMessage(err), false),
+      });
   }
 }

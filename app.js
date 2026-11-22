@@ -86,6 +86,12 @@ async function refreshSession(activePage) {
   if (username === currentUsername() && (!username || role === cached.role)) return;
   username ? setSession(username, role) : clearSession();
   renderNav(activePage);
+  notifySessionChanged();
+}
+
+// Pages that show account data (reviews form, shop sidebar, account page) set
+// window.onSessionChanged to redraw it after a login or logout.
+function notifySessionChanged() {
   if (typeof window.onSessionChanged === "function") window.onSessionChanged();
 }
 
@@ -95,7 +101,8 @@ async function refreshSession(activePage) {
 const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,30}$/;
 const MIN_PASSWORD_LENGTH = 8;
 
-// What customers and the admin page call each order status (the orders validator's enum).
+// What the account page calls each order status (the orders validator's enum). The admin app
+// has the same labels in admin-app/src/app/labels.ts.
 const ORDER_STATUS_LABELS = {
   pending_payment: "Awaiting payment",
   paid: "Paid",
@@ -187,6 +194,76 @@ function fillQuestionSelects(selects, questions) {
   });
 }
 
+// ---------- Account forms (login, sign-up, password reset, account page) ----------
+
+// Shows or clears the error under field `id` (its #<id>-error element). `check` returns an
+// error message, or "" when the value is fine. Returns whether it's fine.
+function checkField(id, check, show = true) {
+  const input = document.getElementById(id);
+  const message = check(input.value);
+  const showError = show && message !== "";
+  input.classList.toggle("invalid", showError);
+  input.setAttribute("aria-invalid", String(showError));
+  document.getElementById(`${id}-error`).textContent = showError ? message : "";
+  return message === "";
+}
+
+// Checks every field in `checks` ({ id: check }, in form order) and focuses the first problem.
+// With show = false it only clears their errors, e.g. when a form is closed.
+function checkFields(checks, show = true) {
+  const invalid = Object.keys(checks).filter((id) => !checkField(id, checks[id], show));
+  if (show && invalid.length) document.getElementById(invalid[0]).focus();
+  return invalid.length === 0;
+}
+
+// Checks a field when it's left, and again while its error is being fixed. Changing the new
+// password re-checks its confirmation.
+function checkAsYouType(checks, { password, confirm } = {}) {
+  Object.keys(checks).forEach((id) => {
+    const input = document.getElementById(id);
+    input.addEventListener("blur", () => checkField(id, checks[id]));
+    input.addEventListener("input", () => {
+      if (input.classList.contains("invalid")) checkField(id, checks[id]);
+      if (id === password && document.getElementById(confirm).value) checkField(confirm, checks[confirm]);
+    });
+  });
+}
+
+// Shows a busy label on a button while the server works; pass null to restore it.
+function setBusy(btn, label) {
+  if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+  btn.disabled = Boolean(label);
+  btn.classList.toggle("is-loading", Boolean(label));
+  btn.textContent = label || btn.dataset.label;
+}
+
+// Every .password-toggle button shows or hides the password field named by its data-target.
+function setupPasswordToggles() {
+  document.querySelectorAll(".password-toggle").forEach((btn) => {
+    const input = document.getElementById(btn.dataset.target);
+    btn.addEventListener("click", () => {
+      const isHidden = input.type === "password";
+      input.type = isHidden ? "text" : "password";
+      btn.textContent = isHidden ? "Hide" : "Show";
+      btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+      btn.setAttribute("aria-pressed", String(isHidden));
+      input.focus();
+    });
+  });
+}
+
+// Shows #<id>-caps while Caps Lock is on and password field `id` has the keyboard.
+function warnOnCapsLock(id) {
+  const input = document.getElementById(id);
+  const warning = document.getElementById(`${id}-caps`);
+  const update = (e) => {
+    if (typeof e.getModifierState === "function") warning.hidden = !e.getModifierState("CapsLock");
+  };
+  input.addEventListener("keydown", update);
+  input.addEventListener("keyup", update);
+  input.addEventListener("blur", () => (warning.hidden = true));
+}
+
 // ---------- Products + reviews (read-only fallback when there's no server) ----------
 
 // Reads from the API. If the server isn't running, uses the copy of `fallbackPath` (one of the
@@ -207,11 +284,6 @@ const REGION_ORDER = ["South American", "Central American", "Asian", "South Afri
 
 async function getProducts() {
   return loadJson("api/products", "data/products.json");
-}
-
-async function getProduct(id) {
-  const products = await getProducts();
-  return products.find((p) => p.id === id) || null;
 }
 
 // "South American" -> "region-south-american", matching the tag colors in styles.css.
@@ -714,7 +786,7 @@ function renderNav(activePage) {
   const cartLink = `<a href="cart.html" class="cart-link ${activePage === "cart.html" ? "active" : ""}">Cart <span class="cart-badge" id="cart-count">${cartCount()}</span></a>`;
 
   let userSection;
-  if (session && session.loggedIn) {
+  if (session) {
     const adminLink =
       session.role === "admin" ? `<a href="admin/">Admin</a>` : ""; // the Angular admin app (admin-app/)
     userSection = `
@@ -754,10 +826,7 @@ function renderNav(activePage) {
       logoutBtn.disabled = true;
       await logOut();
       renderNav(activePage);
-      // Pages that show account data (reviews form, shop sidebar, account page) refresh here.
-      if (typeof window.onSessionChanged === "function") {
-        window.onSessionChanged();
-      }
+      notifySessionChanged();
     });
   }
 }
@@ -796,8 +865,9 @@ function renderFooter(activePage) {
     </div>`;
 }
 
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+// Safe in text and in quoted attributes (value="…", alt="…"), so quotes are escaped too.
+const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
 }

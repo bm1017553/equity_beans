@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 import { AdminStore } from '../admin-store';
 import { Message, errorMessage } from '../admin-api';
 import { MESSAGE_STATUS_LABELS, TOPIC_LABELS, options } from '../labels';
@@ -34,14 +35,15 @@ export class MessagesPage {
   protected setStatus(id: string, menu: HTMLSelectElement) {
     const saved = this.store.messages()?.find((m) => m.id === id)?.status ?? '';
     this.saving.set(id);
-    this.store.setMessageStatus(id, menu.value).subscribe({
-      next: () => this.notes.show(id, 'Saved', true),
-      error: (err) => {
-        this.notes.show(id, errorMessage(err), false);
-        menu.value = saved;
-        this.saving.set(null);
-      },
-      complete: () => this.saving.set(null),
-    });
+    this.store
+      .setMessageStatus(id, menu.value)
+      .pipe(finalize(() => this.saving.set(null)))
+      .subscribe({
+        next: () => this.notes.show(id, 'Saved', true),
+        error: (err) => {
+          this.notes.show(id, errorMessage(err), false);
+          menu.value = saved;
+        },
+      });
   }
 }

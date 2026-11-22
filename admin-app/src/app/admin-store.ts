@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, WritableSignal, computed, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { AdminApi, AdminUser, DatabaseInfo, Message, Order, Product, ProductChanges, errorMessage } from './admin-api';
 
@@ -23,9 +23,9 @@ export class AdminStore {
   readonly newMessages = computed(() => (this.messages() ?? []).filter((m) => m.status === 'new').length);
   readonly usersWithProblems = computed(() => (this.users() ?? []).filter((u) => u.problems.length).length);
 
-  private load<T>(name: Loadable, request: Observable<T>, target: { set(value: T): void }, force: boolean) {
-    const current = (this[name] as () => unknown)();
-    if (current !== null && !force) return;
+  private load<T>(name: Loadable, request: Observable<T>, force: boolean) {
+    const target = this[name] as WritableSignal<T | null>;
+    if (target() !== null && !force) return;
     request.subscribe({
       next: (value) => {
         target.set(value);
@@ -36,23 +36,23 @@ export class AdminStore {
   }
 
   loadOrders(force = false) {
-    this.load('orders', this.api.orders(), this.orders, force);
+    this.load('orders', this.api.orders(), force);
   }
 
   loadMessages(force = false) {
-    this.load('messages', this.api.messages(), this.messages, force);
+    this.load('messages', this.api.messages(), force);
   }
 
   loadProducts(force = false) {
-    this.load('products', this.api.products(), this.products, force);
+    this.load('products', this.api.products(), force);
   }
 
   loadUsers(force = false) {
-    this.load('users', this.api.users(), this.users, force);
+    this.load('users', this.api.users(), force);
   }
 
   loadDatabase(force = false) {
-    this.load('database', this.api.database(), this.database, force);
+    this.load('database', this.api.database(), force);
   }
 
   // ---------- Saving (each returns the request, so the page can show "Saved" or the error) ----------

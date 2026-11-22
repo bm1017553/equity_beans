@@ -28,6 +28,7 @@ if (!SESSION_SECRET) {
 
 // Same rules as app.js and the validators in mongo/.
 const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,30}$/;
+const USERNAME_RULES = "Use 3–30 letters, numbers, dots, dashes or underscores.";
 const MIN_PASSWORD_LENGTH = 8;
 const PBKDF2_ITERATIONS = 600000; // OWASP's recommendation for PBKDF2-SHA256
 const MAX_QTY = 10;
@@ -87,6 +88,11 @@ async function verifyPassword(password, passwordHash) {
 // Checked against when the username doesn't exist, so a wrong username takes as long as a
 // wrong password and the response time doesn't reveal which usernames are taken.
 const dummyHash = hashPassword(crypto.randomBytes(16).toString("hex"));
+
+// For every new password: sign-up, reset, change, and an admin's temporary one.
+function checkNewPassword(password) {
+  if (password.length < MIN_PASSWORD_LENGTH) throw clientError(400, `Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+}
 
 // ---------- Security questions ----------
 
@@ -208,8 +214,18 @@ function clientError(status, message) {
   return Object.assign(new Error(message), { status, expose: true });
 }
 
+// A string from the request body exactly as sent (passwords keep their spaces), or "".
+function str(value) {
+  return typeof value === "string" ? value : "";
+}
+
 function text(value) {
-  return typeof value === "string" ? value.trim() : "";
+  return str(value).trim();
+}
+
+// Rounded to whole cents, so float drift never reaches stored prices and totals.
+function roundCents(amount) {
+  return Math.round(amount * 100) / 100;
 }
 
 function currentUserId(req) {
@@ -219,6 +235,25 @@ function currentUserId(req) {
 function requireLogin(req, res, next) {
   if (!req.session.userId) return next(clientError(401, "Please log in first."));
   next();
+}
+
+// The logged-in account, or 401 when its login outlived it (e.g. an admin deleted it).
+async function loggedInUser(req) {
+  const user = await db.collection("users").findOne({ _id: currentUserId(req) });
+  if (!user) throw clientError(401, "Please log in first.");
+  return user;
+}
+
+function findUserByName(username) {
+  return db.collection("users").findOne({ username }, { collation: CASE_INSENSITIVE });
+}
+
+// Logs an account out on every device, except the session `keepSessionId` when one is given.
+// (connect-mongo stores each session as a JSON string.)
+function endSessions(user, keepSessionId) {
+  const filter = { session: { $regex: `"userId":"${user._id}"` } };
+  if (keepSessionId) filter._id = { $ne: keepSessionId };
+  return db.collection("sessions").deleteMany(filter);
 }
 
 // Guest orders and quiz runs made in this browser session, so logging in can move them to the
@@ -330,9 +365,9 @@ api.get("/session", async (req, res) => {
 
 api.post("/signup", async (req, res) => {
   const username = text(req.body.username);
-  const password = typeof req.body.password === "string" ? req.body.password : "";
-  if (!USERNAME_PATTERN.test(username)) throw clientError(400, "Use 3–30 letters, numbers, dots, dashes or underscores.");
-  if (password.length < MIN_PASSWORD_LENGTH) throw clientError(400, `Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+  const password = str(req.body.password);
+  if (!USERNAME_PATTERN.test(username)) throw clientError(400, USERNAME_RULES);
+  checkNewPassword(password);
   const securityQuestions = await securityQuestionsFrom(req.body.securityQuestions);
 
   // Signing up logs the new customer straight in, so it counts as their first login.
@@ -351,9 +386,8 @@ api.post("/signup", async (req, res) => {
 
 api.post("/login", async (req, res) => {
   const username = text(req.body.username);
-  const password = typeof req.body.password === "string" ? req.body.password : "";
-  const users = db.collection("users");
-  const user = USERNAME_PATTERN.test(username) ? await users.findOne({ username }, { collation: CASE_INSENSITIVE }) : null;
+  const password = str(req.body.password);
+  const user = USERNAME_PATTERN.test(username) ? await findUserByName(username) : null;
   // A locked account is refused even with the right password, so guessing stays useless.
   const locked = lockedUntil(user, "login");
   if (locked) throw loginLockedError(locked);
@@ -368,7 +402,7 @@ api.post("/login", async (req, res) => {
     throw clientError(401, "Username or password is incorrect.");
   }
 
-  await users.updateOne({ _id: user._id }, withUpdates({ $set: { lastLoginAt: new Date() } }, clearLock("login")));
+  await db.collection("users").updateOne({ _id: user._id }, withUpdates({ $set: { lastLoginAt: new Date() } }, clearLock("login")));
   res.json(await startSession(req, user));
 });
 
@@ -381,41 +415,32 @@ api.post("/logout", (req, res, next) => {
 });
 
 api.get("/me", requireLogin, async (req, res) => {
-  const user = await db.collection("users").findOne({ _id: currentUserId(req) });
-  if (!user) throw clientError(401, "Please log in first.");
-  res.json(toClientAccount(user));
+  res.json(toClientAccount(await loggedInUser(req)));
 });
 
 // Changing the questions takes the current password, so a borrowed logged-in browser can't
 // set answers that let someone take the account later.
 api.post("/me/security-questions", requireLogin, async (req, res) => {
-  const password = typeof req.body.password === "string" ? req.body.password : "";
-  const users = db.collection("users");
-  const user = await users.findOne({ _id: currentUserId(req) });
-  if (!user) throw clientError(401, "Please log in first.");
-  await checkCurrentPassword(user, password);
+  const user = await loggedInUser(req);
+  await checkCurrentPassword(user, str(req.body.password));
 
   const securityQuestions = await securityQuestionsFrom(req.body.securityQuestions);
-  await users.updateOne({ _id: user._id }, withUpdates({ $set: { securityQuestions } }, clearLock("reset"), clearLock("login")));
+  await db.collection("users").updateOne({ _id: user._id }, withUpdates({ $set: { securityQuestions } }, clearLock("reset"), clearLock("login")));
   res.json(toClientAccount({ ...user, securityQuestions }));
 });
 
 // Changing the password while logged in. Other devices are logged out, this one stays in.
 api.post("/me/password", requireLogin, async (req, res) => {
-  const currentPassword = typeof req.body.currentPassword === "string" ? req.body.currentPassword : "";
-  const newPassword = typeof req.body.newPassword === "string" ? req.body.newPassword : "";
-  if (newPassword.length < MIN_PASSWORD_LENGTH) throw clientError(400, `Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+  const currentPassword = str(req.body.currentPassword);
+  const newPassword = str(req.body.newPassword);
+  checkNewPassword(newPassword);
 
-  const users = db.collection("users");
-  const user = await users.findOne({ _id: currentUserId(req) });
-  if (!user) throw clientError(401, "Please log in first.");
+  const user = await loggedInUser(req);
   await checkCurrentPassword(user, currentPassword);
   if (newPassword === currentPassword) throw clientError(400, "Choose a new password that’s different from your current one.");
 
-  await users.updateOne({ _id: user._id }, withUpdates({ $set: { passwordHash: await hashPassword(newPassword) } }, clearLock("login")));
-  const { deletedCount } = await db
-    .collection("sessions")
-    .deleteMany({ _id: { $ne: req.sessionID }, session: { $regex: `"userId":"${user._id}"` } });
+  await db.collection("users").updateOne({ _id: user._id }, withUpdates({ $set: { passwordHash: await hashPassword(newPassword) } }, clearLock("login")));
+  const { deletedCount } = await endSessions(user, req.sessionID);
   res.json({ username: user.username, otherSessionsEnded: deletedCount });
 });
 
@@ -431,7 +456,7 @@ api.get("/security-questions", (req, res) => {
 api.post("/password/questions", async (req, res) => {
   const username = text(req.body.username);
   if (!USERNAME_PATTERN.test(username)) throw clientError(400, "Please enter your username.");
-  const user = await db.collection("users").findOne({ username }, { collation: CASE_INSENSITIVE });
+  const user = await findUserByName(username);
   const ids = user && user.securityQuestions ? user.securityQuestions.map((q) => q.questionId) : decoyQuestionIds(username);
   res.json({ questions: ids.map((id) => SECURITY_QUESTIONS[id]) });
 });
@@ -442,12 +467,11 @@ api.post("/password/questions", async (req, res) => {
 api.post("/password/reset", async (req, res) => {
   const username = text(req.body.username);
   const answers = Array.isArray(req.body.answers) ? req.body.answers : [];
-  const password = typeof req.body.password === "string" ? req.body.password : "";
-  if (password.length < MIN_PASSWORD_LENGTH) throw clientError(400, `Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+  const password = str(req.body.password);
+  checkNewPassword(password);
   if (answers.length !== QUESTIONS_PER_ACCOUNT) throw clientError(400, "Please answer both security questions.");
 
-  const users = db.collection("users");
-  const user = USERNAME_PATTERN.test(username) ? await users.findOne({ username }, { collation: CASE_INSENSITIVE }) : null;
+  const user = USERNAME_PATTERN.test(username) ? await findUserByName(username) : null;
   const locked = lockedUntil(user, "reset");
   if (locked) throw resetLockedError(locked);
 
@@ -463,14 +487,13 @@ api.post("/password/reset", async (req, res) => {
     throw clientError(400, "Those answers don’t match. Check them and try again.");
   }
 
-  await users.updateOne(
+  await db.collection("users").updateOne(
     { _id: user._id },
     // Answering the questions proves it's the owner, so it also ends a login lock.
     withUpdates({ $set: { passwordHash: await hashPassword(password), lastLoginAt: new Date() } }, clearLock("reset"), clearLock("login"))
   );
   // Log the account out everywhere, in case someone else knew the old password.
-  // (connect-mongo stores each session as a JSON string.)
-  await db.collection("sessions").deleteMany({ session: { $regex: `"userId":"${user._id}"` } });
+  await endSessions(user);
   res.json(await startSession(req, user));
 });
 
@@ -545,11 +568,9 @@ api.post("/orders", async (req, res) => {
     return { productId: product.id, name: product.name, option: option.name, unitPrice: option.salePrice ?? option.price, qty: line.qty };
   });
 
-  // Rounded to whole cents so float drift never reaches the stored totals.
-  const cents = (amount) => Math.round(amount * 100) / 100;
-  const subtotal = cents(items.reduce((sum, line) => sum + line.unitPrice * line.qty, 0));
+  const subtotal = roundCents(items.reduce((sum, line) => sum + line.unitPrice * line.qty, 0));
   const shipping = subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE;
-  const total = cents(subtotal + shipping);
+  const total = roundCents(subtotal + shipping);
 
   const order = {
     orderId: makeOrderId(),
@@ -616,7 +637,7 @@ api.post("/messages", async (req, res) => {
   res.status(201).json({ name: message.name, email: message.email });
 });
 
-// ---------- Admin (admin.html) ----------
+// ---------- Admin (the Angular app in admin/) ----------
 
 // Every admin route checks the role in the database on each request, not the copy in the
 // session, so taking away someone's admin role works straight away. Customers get 403.
@@ -703,7 +724,7 @@ admin.post("/products/:id", async (req, res) => {
       if (!inCents || salePrice <= 0 || salePrice >= option.price) {
         throw clientError(400, `${option.name}: a sale price must be in dollars and cents and less than the regular $${option.price}.`);
       }
-      salePrice = Math.round(salePrice * 100) / 100;
+      salePrice = roundCents(salePrice);
     }
     return { ...option, available: change.available, salePrice };
   });
@@ -746,8 +767,8 @@ function toAdminUser(u, { ordersBy, breaking, selfId }) {
   if (!ROLES.includes(u.role)) problems.push({ code: "role", text: "Has no role. Choose Customer or Admin." });
   if (!isUsableHash(u.passwordHash)) problems.push({ code: "password", text: "Its password can’t be used to log in (a placeholder or unsupported hash). Set a temporary password." });
   if (!u.securityQuestions) problems.push({ code: "questions", text: "No security questions, so “Forgot password?” can’t be used. Only the customer can add them." });
-  if (loginLockedUntil) problems.push({ code: "loginLocked", text: "Login is locked after 10 wrong passwords." });
-  if (resetLockedUntil) problems.push({ code: "resetLocked", text: "Password reset is locked after 5 wrong answers." });
+  if (loginLockedUntil) problems.push({ code: "loginLocked", text: `Login is locked after ${LOCKS.login.max} wrong passwords.` });
+  if (resetLockedUntil) problems.push({ code: "resetLocked", text: `Password reset is locked after ${LOCKS.reset.max} wrong answers.` });
   return {
     username: u.username,
     role: u.role || null,
@@ -764,28 +785,22 @@ function toAdminUser(u, { ordersBy, breaking, selfId }) {
   };
 }
 
-async function adminUserView(req, username) {
-  const users = db.collection("users");
-  const user = await users.findOne({ username }, { collation: CASE_INSENSITIVE });
-  if (!user) throw clientError(404, "That account doesn’t exist any more.");
-  const orders = await db.collection("orders").countDocuments({ userId: user._id });
-  return toAdminUser(user, { ordersBy: { [String(user._id)]: orders }, breaking: await usersBreakingRules(), selfId: req.session.userId });
-}
-
 // The account named in the URL, or 404.
 async function findUserOr404(username) {
-  const user = await db.collection("users").findOne({ username }, { collation: CASE_INSENSITIVE });
+  const user = await findUserByName(username);
   if (!user) throw clientError(404, "That account doesn’t exist any more.");
   return user;
 }
 
-function isSelf(req, user) {
-  return String(user._id) === req.session.userId;
+// The account as the Users tab shows it, after a fix.
+async function adminUserView(req, username) {
+  const user = await findUserOr404(username);
+  const orders = await db.collection("orders").countDocuments({ userId: user._id });
+  return toAdminUser(user, { ordersBy: { [String(user._id)]: orders }, breaking: await usersBreakingRules(), selfId: req.session.userId });
 }
 
-// Logs an account out everywhere, except this admin's own browser when it's their account.
-function endSessions(req, user) {
-  return db.collection("sessions").deleteMany({ _id: { $ne: req.sessionID }, session: { $regex: `"userId":"${user._id}"` } });
+function isSelf(req, user) {
+  return String(user._id) === req.session.userId;
 }
 
 // An update to a user that MongoDB's rules refuse gets a message saying what to do.
@@ -827,7 +842,7 @@ admin.post("/users/:username/role", async (req, res) => {
 
 admin.post("/users/:username/rename", async (req, res) => {
   const newUsername = text(req.body.newUsername);
-  if (!USERNAME_PATTERN.test(newUsername)) throw clientError(400, "Use 3–30 letters, numbers, dots, dashes or underscores.");
+  if (!USERNAME_PATTERN.test(newUsername)) throw clientError(400, USERNAME_RULES);
   const user = await findUserOr404(req.params.username);
   try {
     await updateUser(user, { $set: { username: newUsername } });
@@ -839,18 +854,18 @@ admin.post("/users/:username/rename", async (req, res) => {
   await db.collection("reviews").updateMany({ userId: user._id }, { $set: { name: newUsername } });
   // Sessions keep a copy of the username: this admin's own is updated; anyone else logs in again.
   if (isSelf(req, user)) req.session.username = newUsername;
-  await endSessions(req, user);
+  await endSessions(user, req.sessionID);
   res.json(await adminUserView(req, newUsername));
 });
 
 // Sets a password the admin then gives the customer, e.g. when they're locked out and have no
 // security questions. Logs that account out everywhere.
 admin.post("/users/:username/password", async (req, res) => {
-  const password = typeof req.body.password === "string" ? req.body.password : "";
-  if (password.length < MIN_PASSWORD_LENGTH) throw clientError(400, `Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+  const password = str(req.body.password);
+  checkNewPassword(password);
   const user = await findUserOr404(req.params.username);
   await updateUser(user, withUpdates({ $set: { passwordHash: await hashPassword(password) } }, clearLock("login")));
-  const { deletedCount } = await endSessions(req, user);
+  const { deletedCount } = await endSessions(user, req.sessionID);
   res.json({ ...(await adminUserView(req, user.username)), sessionsEnded: deletedCount });
 });
 
@@ -871,7 +886,7 @@ admin.post("/users/:username/delete", async (req, res) => {
   for (const collection of ["orders", "reviews", "quizResults", "messages"]) {
     kept[collection] = (await db.collection(collection).updateMany({ userId: user._id }, { $set: { userId: null } })).modifiedCount;
   }
-  await endSessions(req, user);
+  await endSessions(user, req.sessionID);
   await db.collection("users").deleteOne({ _id: user._id });
   res.json({ username: user.username, deleted: true, kept });
 });

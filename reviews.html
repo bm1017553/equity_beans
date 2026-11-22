@@ -292,8 +292,7 @@
     // ---------- Login gating ----------
 
     function updateFormAccess() {
-      const session = getSession();
-      const loggedIn = Boolean(session && session.loggedIn);
+      const loggedIn = Boolean(getSession());
       document.getElementById("review-form").hidden = !loggedIn;
       document.getElementById("login-notice").hidden = loggedIn;
     }

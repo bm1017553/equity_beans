@@ -172,67 +172,32 @@
 
     // ---------- Field validation (shown once a field has been left) ----------
 
-    // Each check returns an error message, or "" when the value is fine.
-    const fields = {
-      username: { form: "login", check: (v) => (v.trim() ? "" : "Please enter your username.") },
-      password: { form: "login", check: (v) => (v ? "" : "Please enter your password.") },
-      "new-username": {
-        form: "signup",
-        check: (v) => {
-          const name = v.trim();
-          if (!name) return "Please choose a username.";
-          // Whether it's taken is checked by the server when the form is sent.
-          return USERNAME_PATTERN.test(name) ? "" : "Use 3–30 letters, numbers, dots, dashes or underscores.";
-        },
+    // Each check returns an error message, or "" when the value is fine (checkField() in app.js).
+    // In the same order as the form, so the first problem gets the focus.
+    const loginChecks = {
+      username: (v) => (v.trim() ? "" : "Please enter your username."),
+      password: (v) => (v ? "" : "Please enter your password."),
+    };
+    const signupChecks = {
+      "new-username": (v) => {
+        const name = v.trim();
+        if (!name) return "Please choose a username.";
+        // Whether it's taken is checked by the server when the form is sent.
+        return USERNAME_PATTERN.test(name) ? "" : "Use 3–30 letters, numbers, dots, dashes or underscores.";
       },
-      "new-password": {
-        form: "signup",
-        check: (v) => (v.length >= MIN_PASSWORD_LENGTH ? "" : `Use at least ${MIN_PASSWORD_LENGTH} characters.`),
+      "new-password": (v) => (v.length >= MIN_PASSWORD_LENGTH ? "" : `Use at least ${MIN_PASSWORD_LENGTH} characters.`),
+      "confirm-password": (v) => {
+        if (!v) return "Please enter your password again.";
+        return v === document.getElementById("new-password").value ? "" : "Passwords don’t match.";
       },
-      "confirm-password": {
-        form: "signup",
-        check: (v) => {
-          if (!v) return "Please enter your password again.";
-          return v === document.getElementById("new-password").value ? "" : "Passwords don’t match.";
-        },
-      },
-      // In the same order as the form, so the first problem gets the focus.
-      "new-q1": { form: "signup", check: (v) => (v ? "" : "Please choose a question.") },
-      "new-a1": { form: "signup", check: securityAnswerError },
-      "new-q2": { form: "signup", check: (v) => (v ? "" : "Please choose a question.") },
-      "new-a2": { form: "signup", check: securityAnswerError },
+      "new-q1": (v) => (v ? "" : "Please choose a question."),
+      "new-a1": securityAnswerError,
+      "new-q2": (v) => (v ? "" : "Please choose a question."),
+      "new-a2": securityAnswerError,
     };
 
-    function validateField(id, show) {
-      const input = document.getElementById(id);
-      const message = fields[id].check(input.value);
-      const showError = show && message !== "";
-      input.classList.toggle("invalid", showError);
-      input.setAttribute("aria-invalid", String(showError));
-      document.getElementById(`${id}-error`).textContent = showError ? message : "";
-      return message === "";
-    }
-
-    // Shows every problem in one form and focuses the first. True when the form is fine.
-    function validateForm(formName) {
-      const ids = Object.keys(fields).filter((id) => fields[id].form === formName);
-      const invalid = ids.filter((id) => !validateField(id, true));
-      if (invalid.length) document.getElementById(invalid[0]).focus();
-      return invalid.length === 0;
-    }
-
-    Object.keys(fields).forEach((id) => {
-      const input = document.getElementById(id);
-      input.addEventListener("blur", () => validateField(id, true));
-      // Clear the error as soon as the customer starts fixing it.
-      input.addEventListener("input", () => {
-        if (input.classList.contains("invalid")) validateField(id, true);
-        // Changing the password can fix (or break) the confirmation below it.
-        if (id === "new-password" && document.getElementById("confirm-password").value) {
-          validateField("confirm-password", true);
-        }
-      });
-    });
+    checkAsYouType(loginChecks);
+    checkAsYouType(signupChecks, { password: "new-password", confirm: "confirm-password" });
 
     // ---------- Log in / Create account ----------
 
@@ -254,7 +219,8 @@
       updateTitle();
 
       // Start the other form clean, and keep the mode in the URL so a reload stays on it.
-      Object.keys(fields).forEach((id) => validateField(id, false));
+      checkFields(loginChecks, false);
+      checkFields(signupChecks, false);
       loginMsg.textContent = signupMsg.textContent = "";
       const url = new URL(window.location.href);
       if (signup) url.searchParams.set("mode", "signup");
@@ -272,32 +238,11 @@
 
     setMode(new URLSearchParams(window.location.search).get("mode") === "signup" ? "signup" : "login", false);
 
-    // ---------- Show / hide password ----------
+    // ---------- Show / hide password and Caps Lock warnings (app.js) ----------
 
-    document.querySelectorAll(".password-toggle").forEach((btn) => {
-      const input = document.getElementById(btn.dataset.target);
-      btn.addEventListener("click", () => {
-        const isHidden = input.type === "password";
-        input.type = isHidden ? "text" : "password";
-        btn.textContent = isHidden ? "Hide" : "Show";
-        btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
-        btn.setAttribute("aria-pressed", String(isHidden));
-        input.focus();
-      });
-    });
-
-    // ---------- Caps Lock warning (keyboard events) ----------
-
-    ["password", "new-password"].forEach((id) => {
-      const input = document.getElementById(id);
-      const warning = document.getElementById(`${id}-caps`);
-      const update = (e) => {
-        if (typeof e.getModifierState === "function") warning.hidden = !e.getModifierState("CapsLock");
-      };
-      input.addEventListener("keydown", update);
-      input.addEventListener("keyup", update);
-      input.addEventListener("blur", () => (warning.hidden = true));
-    });
+    setupPasswordToggles();
+    warnOnCapsLock("password");
+    warnOnCapsLock("new-password");
 
     // ---------- Submit ----------
 
@@ -308,15 +253,6 @@
       if (orders) parts.push(orders === 1 ? "1 order" : `${orders} orders`);
       return parts.length ? `We saved ${parts.join(" and ")} to your account. ` : "";
     }
-
-    // Shows a busy label while the server checks the password; pass null to restore the button.
-    function setBusy(btn, label) {
-      btn.disabled = Boolean(label);
-      btn.classList.toggle("is-loading", Boolean(label));
-      btn.textContent = label || btn.dataset.label;
-    }
-    loginBtn.dataset.label = loginBtn.textContent;
-    signupBtn.dataset.label = signupBtn.textContent;
 
     // `claimed` counts the guest quiz runs and orders the server moved to the account.
     function finish(username, claimed, msg, greeting) {
@@ -333,7 +269,7 @@
       e.preventDefault();
       loginMsg.classList.remove("success");
       loginMsg.textContent = "";
-      if (!validateForm("login")) return;
+      if (!checkFields(loginChecks)) return;
 
       setBusy(loginBtn, "Logging in…");
       let result;
@@ -356,7 +292,7 @@
       e.preventDefault();
       signupMsg.classList.remove("success");
       signupMsg.textContent = "";
-      if (!validateForm("signup")) return;
+      if (!checkFields(signupChecks)) return;
 
       setBusy(signupBtn, "Creating account…");
       let result;

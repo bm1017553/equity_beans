@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 import { AdminStore } from '../admin-store';
 import { Product, errorMessage } from '../admin-api';
 import { Notes } from '../notes';
@@ -58,16 +59,13 @@ export class ProductsPage {
         // An emptied number box gives null: no sale.
         options: d.options.map((o) => ({ name: o.name, available: o.available, salePrice: o.salePrice ?? null })),
       })
+      .pipe(finalize(() => this.saving.set(null)))
       .subscribe({
         next: (saved) => {
           this.drafts.set(p.id, toDraft(saved));
           this.notes.show(p.id, 'Saved', true);
         },
-        error: (err) => {
-          this.notes.show(p.id, errorMessage(err), false);
-          this.saving.set(null);
-        },
-        complete: () => this.saving.set(null),
+        error: (err) => this.notes.show(p.id, errorMessage(err), false),
       });
   }
 

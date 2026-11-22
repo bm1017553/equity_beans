@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 import { AdminStore } from '../admin-store';
 import { errorMessage } from '../admin-api';
 import { ORDER_STATUS_LABELS, options } from '../labels';
@@ -28,14 +29,15 @@ export class OrdersPage {
   protected setStatus(orderId: string, menu: HTMLSelectElement) {
     const saved = this.store.orders()?.find((o) => o.orderId === orderId)?.status ?? '';
     this.saving.set(orderId);
-    this.store.setOrderStatus(orderId, menu.value).subscribe({
-      next: () => this.notes.show(orderId, 'Saved', true),
-      error: (err) => {
-        this.notes.show(orderId, errorMessage(err), false);
-        menu.value = saved; // back to what's really in the database
-        this.saving.set(null);
-      },
-      complete: () => this.saving.set(null),
-    });
+    this.store
+      .setOrderStatus(orderId, menu.value)
+      .pipe(finalize(() => this.saving.set(null)))
+      .subscribe({
+        next: () => this.notes.show(orderId, 'Saved', true),
+        error: (err) => {
+          this.notes.show(orderId, errorMessage(err), false);
+          menu.value = saved; // back to what's really in the database
+        },
+      });
   }
 }

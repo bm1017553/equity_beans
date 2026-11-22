@@ -126,6 +126,11 @@
     // Logging out from this page leaves nothing to show.
     window.onSessionChanged = () => (window.location.href = "index.html");
 
+    // The server's login has ended (or there's no server): log in again.
+    function logInAgain() {
+      clearSession();
+      window.location.replace("login.html?next=account.html");
+    }
 
     function formatDate(iso) {
       return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -228,10 +233,7 @@
       passwordForm.hidden = true;
       passwordForm.reset();
       passwordMsg.textContent = "";
-      Object.keys(passwordChecks).forEach((id) => {
-        document.getElementById(id).classList.remove("invalid");
-        document.getElementById(`${id}-error`).textContent = "";
-      });
+      checkFields(passwordChecks, false);
       passwordSummary.hidden = false;
     }
 
@@ -245,17 +247,8 @@
 
     passwordForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const invalid = Object.entries(passwordChecks).filter(([id, check]) => {
-        const message = check(document.getElementById(id).value);
-        document.getElementById(id).classList.toggle("invalid", Boolean(message));
-        document.getElementById(`${id}-error`).textContent = message;
-        return message;
-      });
       passwordMsg.textContent = "";
-      if (invalid.length) {
-        document.getElementById(invalid[0][0]).focus();
-        return;
-      }
+      if (!checkFields(passwordChecks)) return;
 
       const saveBtn = document.getElementById("pw-save");
       saveBtn.disabled = true;
@@ -263,11 +256,7 @@
       try {
         result = await changePassword(document.getElementById("pw-current").value, document.getElementById("pw-new").value);
       } catch (err) {
-        if (err.status === 401) {
-          clearSession();
-          window.location.replace("login.html?next=account.html");
-          return;
-        }
+        if (err.status === 401) return logInAgain();
         passwordMsg.textContent = err.message;
         return;
       } finally {
@@ -313,10 +302,7 @@
       securityForm.reset();
       questionSelects[0].dispatchEvent(new Event("change")); // un-hides options hidden by a choice
       securityMsg.textContent = "";
-      Object.keys(securityChecks).forEach((id) => {
-        document.getElementById(id).classList.remove("invalid");
-        document.getElementById(`${id}-error`).textContent = "";
-      });
+      checkFields(securityChecks, false);
       renderSecurity();
     }
 
@@ -324,17 +310,8 @@
 
     securityForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const invalid = Object.entries(securityChecks).filter(([id, check]) => {
-        const message = check(document.getElementById(id).value);
-        document.getElementById(id).classList.toggle("invalid", Boolean(message));
-        document.getElementById(`${id}-error`).textContent = message;
-        return message;
-      });
       securityMsg.textContent = "";
-      if (invalid.length) {
-        document.getElementById(invalid[0][0]).focus();
-        return;
-      }
+      if (!checkFields(securityChecks)) return;
 
       const saveBtn = document.getElementById("sq-save");
       saveBtn.disabled = true;
@@ -345,11 +322,7 @@
         }));
         accountQuestions = (await updateSecurityQuestions(questions, document.getElementById("sq-password").value)).securityQuestions;
       } catch (err) {
-        if (err.status === 401) {
-          clearSession();
-          window.location.replace("login.html?next=account.html");
-          return;
-        }
+        if (err.status === 401) return logInAgain();
         securityMsg.textContent = err.message;
         return;
       } finally {
@@ -383,12 +356,7 @@
       try {
         [orders, quiz, reviews] = await Promise.all([getOrders(), getQuizResult(), getMyReviews()]);
       } catch (err) {
-        // The server's login has ended (or there's no server): log in again.
-        if (err.status === 401) {
-          clearSession();
-          window.location.replace("login.html?next=account.html");
-          return;
-        }
+        if (err.status === 401) return logInAgain();
         document.getElementById("account-orders").innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
         return;
       }

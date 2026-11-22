@@ -3064,7 +3064,7 @@ a.btn-link.btn-hero-outline:hover {
   }
 }
 
-/* ---------- Admin page ---------- */
+/* ---------- Admin app (admin/, built from admin-app/; its tab links are styled in app.css) ---------- */
 
 .admin-tabs {
   display: flex;
@@ -3072,26 +3072,6 @@ a.btn-link.btn-hero-outline:hover {
   gap: 8px;
   margin-bottom: 20px;
   border-bottom: 1px solid var(--border);
-}
-
-.admin-tabs [role="tab"] {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  margin-bottom: -1px;
-  border: 0;
-  border-bottom: 3px solid transparent;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.admin-tabs [role="tab"][aria-selected="true"] {
-  border-bottom-color: var(--primary);
-  color: var(--text);
 }
 
 .admin-count:not(:empty) {
@@ -3167,10 +3147,6 @@ a.btn-link.btn-hero-outline:hover {
 
 .admin-status select {
   min-width: 180px;
-}
-
-.admin-saved:empty {
-  display: none;
 }
 
 .admin-columns {
